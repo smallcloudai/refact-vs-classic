@@ -43,3 +43,7 @@ jobs:
           path: ./MultilineGreyText/RefactLSP
           name: dist-${{ matrix.target }}
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          path: ./MultilineGreyText/RefactLSP/refact-lsp.exe
