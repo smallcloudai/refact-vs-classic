@@ -1,0 +1,45 @@
+name: CI build
+
+on:
+  # Trigger the workflow on any pull request
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  dist:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            code-target: win32-x64
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            code-target: win32-ia32
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            code-target: win32-arm64
+    env:
+      LLM_LS_TARGET: ${{ matrix.target }}
+
+    name: dist (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
+          
+      - name: Download artifact
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: build.yml
+          repo: smallcloudai/refact-lsp
+          branch: main 
+          path: ./MultilineGreyText/RefactLSP
+          name: dist-${{ matrix.target }}
+
