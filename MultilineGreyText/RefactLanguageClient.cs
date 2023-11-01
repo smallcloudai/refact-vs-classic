@@ -6,23 +6,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Pipes;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Threading;
 using Newtonsoft.Json.Linq;
 using Task = System.Threading.Tasks.Task;
-using Microsoft.VisualStudio.LanguageServer.Protocol;
 using System.ComponentModel.Composition;
-using System.Net.Sockets;
-using System.Net;
-using System.Xml.Xsl;
-using static System.Net.Mime.MediaTypeNames;
-using Microsoft.VisualStudio.GraphModel.CodeSchema;
-using System.Drawing;
-using static System.Net.WebRequestMethods;
-using stdole;
 
 namespace RefactAI
 {
@@ -79,7 +69,7 @@ namespace RefactAI
             info.RedirectStandardInput = true;
             info.RedirectStandardOutput = true;
             info.UseShellExecute = false;
-            info.CreateNoWindow = true;
+            //info.CreateNoWindow = true;
 
             Process process = new Process();
             process.StartInfo = info;
@@ -209,8 +199,6 @@ namespace RefactAI
         {
             internal readonly static RefactMiddleLayer Instance = new RefactMiddleLayer();
 
-            JsonRpc rpc = null;
-
             public bool CanHandle(string methodName)
             {
                 return true;
@@ -219,13 +207,11 @@ namespace RefactAI
             public Task HandleNotificationAsync(string methodName, JToken methodParam, Func<JToken, Task> sendNotification)
             {
                 Task t = sendNotification(methodParam);
-
                 return t;
             }
             public async Task<JToken> HandleRequestAsync(string methodName, JToken methodParam, Func<JToken, Task<JToken>> sendRequest)
             {
                 var result = await sendRequest(methodParam);
-
                 if(methodName == "textDocument/completion")
                 {
                     return JToken.Parse("[]");

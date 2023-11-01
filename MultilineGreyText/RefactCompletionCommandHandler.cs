@@ -9,13 +9,14 @@ using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.TextManager.Interop;
 using Microsoft.VisualStudio.Utilities;
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using static Microsoft.ServiceHub.Framework.ServiceBrokerClient;
 
 namespace RefactAI
 {
     internal class RefactCompletionCommandHandler : IOleCommandTarget
     {
-
         private IOleCommandTarget m_nextCommandHandler;
         private ITextView m_textView;
         private RefactCompletionHandlerProvider m_provider;
@@ -34,16 +35,10 @@ namespace RefactAI
             var topBuffer = textView.BufferGraph.TopBuffer;
             var projectionBuffer = topBuffer as IProjectionBufferBase;
             var typeName = topBuffer.GetType();
-            if (projectionBuffer != null)
-            {
-                documentFactory.TryGetTextDocument(projectionBuffer.SourceBuffers[0], out doc);
-                this.filePath = new Uri(doc.FilePath).ToString();
-            }
-            else
-            {
-                documentFactory.TryGetTextDocument(topBuffer, out doc);
-                this.filePath = new Uri(doc.FilePath).ToString();
-            }
+
+            ITextBuffer textBuffer = projectionBuffer != null ? projectionBuffer.SourceBuffers[0] : topBuffer;
+            documentFactory.TryGetTextDocument(textBuffer, out doc);
+            this.filePath = new Uri(doc.FilePath).ToString();
 
             //add the command to the command chain
             textViewAdapter.AddCommandFilter(this, out m_nextCommandHandler);
@@ -53,53 +48,75 @@ namespace RefactAI
             return m_nextCommandHandler.QueryStatus(ref pguidCmdGroup, cCmds, prgCmds, pCmdText);
         }
 
-        public int Exec(ref Guid pguidCmdGroup, uint nCmdID, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut)
+        public void GetLSPCompletions()
         {
-            if (VsShellUtilities.IsInAutomationFunction(m_provider.ServiceProvider))
+            if (!General.Instance.PauseCompletion)
             {
-                return m_nextCommandHandler.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
-            }
-            //make a copy of this so we can look at it after forwarding some commands
-            uint commandID = nCmdID;
-            char typedChar = char.MinValue;
-            //make sure the input is a char before getting it
-            if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == (uint)VSConstants.VSStd2KCmdID.TYPECHAR)
-            {
-                typedChar = (char)(ushort)Marshal.GetObjectForNativeVariant(pvaIn);
-            }
+                SnapshotPoint? caretPoint = m_textView.Caret.Position.Point.GetPoint(textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
 
-            //check for a commit character
-            if (nCmdID == (uint)VSConstants.VSStd2KCmdID.RETURN
-                || nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB)
-            {
-                var key = typeof(MultilineGreyTextTagger);
-                var props = m_textView.TextBuffer.Properties;
-                if (props.ContainsProperty(key))
+                if (caretPoint.HasValue)
                 {
-                    var tagger = props.GetProperty<MultilineGreyTextTagger>(key);
-                    if (tagger.IsSuggestionActive() && tagger.CompleteText())
-                    {
-                        if (m_session != null && !m_session.IsDismissed)
-                        {
-                            m_session.Dismiss();
-                        }
+                    int lineN;
+                    int characterN;
+                    int res = textViewAdapter.GetCaretPos(out lineN, out characterN);
 
-                        return VSConstants.S_OK;
-                    }
-                    else
+                    if (res == VSConstants.S_OK && RefactLanguageClient.Instance != null)
                     {
-                        tagger.ClearSuggestion();
+                        RefactLanguageClient.Instance.RefactCompletion(m_textView.TextBuffer.Properties, filePath, lineN, characterN);
                     }
                 }
             }
+        }
 
-            if (nCmdID == (uint)VSConstants.VSStd2KCmdID.RETURN
-                || nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB ||
-                    (char.IsWhiteSpace(typedChar) || char.IsPunctuation(typedChar)))
+        public int Exec(ref Guid pguidCmdGroup, uint nCmdID, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut)
+        {
+            try
             {
+                if (VsShellUtilities.IsInAutomationFunction(m_provider.ServiceProvider))
+                {
+                    return m_nextCommandHandler.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                }
+
+                //check for a commit character
+                if (nCmdID == (uint)VSConstants.VSStd2KCmdID.RETURN ||
+                    nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB)
+                {
+                    var key = typeof(MultilineGreyTextTagger);
+                    var props = m_textView.TextBuffer.Properties;
+                    if (props.ContainsProperty(key))
+                    {
+                        var tagger = props.GetProperty<MultilineGreyTextTagger>(key);
+                        if (tagger.IsSuggestionActive() && tagger.CompleteText())
+                        {
+                            if (m_session != null && !m_session.IsDismissed)
+                            {
+                                m_session.Dismiss();
+                            }
+
+                            return VSConstants.S_OK;
+                        }
+                        else
+                        {
+                            tagger.ClearSuggestion();
+                        }
+                    }
+                }
+
+                //make a copy of this so we can look at it after forwarding some commands
+                uint commandID = nCmdID;
+                char typedChar = char.MinValue;
+
+                //make sure the input is a char before getting it
+                if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == (uint)VSConstants.VSStd2KCmdID.TYPECHAR)
+                {
+                    typedChar = (char)(ushort)Marshal.GetObjectForNativeVariant(pvaIn);
+                }
 
                 //check for a selection
-                if (m_session != null && !m_session.IsDismissed)
+                if (m_session != null && !m_session.IsDismissed &&
+                    (nCmdID == (uint)VSConstants.VSStd2KCmdID.RETURN ||
+                    nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB ||
+                    (char.IsWhiteSpace(typedChar) || char.IsPunctuation(typedChar))))
                 {
                     //if the selection is fully selected, commit the current session
                     if (m_session.SelectedCompletionSet.SelectionStatus.IsSelected)
@@ -114,70 +131,60 @@ namespace RefactAI
                         m_session.Dismiss();
                     }
                 }
-            }
 
-            //pass along the command so the char is added to the buffer
-            int retVal = m_nextCommandHandler.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
-
-            bool handled = false;
-            if (!typedChar.Equals(char.MinValue) && char.IsLetterOrDigit(typedChar))
-            {
-                if (m_session == null || m_session.IsDismissed) // If there is no active session, bring up completion
+                //pass along the command so the char is added to the buffer
+                int retVal = m_nextCommandHandler.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                bool handled = false;
+                if (!typedChar.Equals(char.MinValue) && char.IsLetterOrDigit(typedChar))
                 {
-                    this.TriggerCompletion();
-                    m_session.Filter();
-                }
-                else    //the completion session is already active, so just filter
-                {
-                    m_session.Filter();
-                }
-                handled = true;
-            }
-            else if (commandID == (uint)VSConstants.VSStd2KCmdID.BACKSPACE   //redo the filter if there is a deletion
-                || commandID == (uint)VSConstants.VSStd2KCmdID.DELETE)
-            {
-                if (m_session != null && !m_session.IsDismissed)
-                    m_session.Filter();
-                handled = true;
-            }
-
-            if (m_session != null && !General.Instance.PauseCompletion)
-            {
-                SnapshotPoint? caretPoint =
-                m_textView.Caret.Position.Point.GetPoint(
-                textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
-                if (caretPoint.HasValue){
-                    int lineN;
-                    int characterN;
-
-                    int res = textViewAdapter.GetCaretPos(out lineN, out characterN);
-                    if (res == VSConstants.S_OK && RefactLanguageClient.Instance != null){
-                       RefactLanguageClient.Instance.RefactCompletion(m_textView.TextBuffer.Properties, filePath, lineN, characterN);
+                    if (m_session == null || m_session.IsDismissed) // If there is no active session, bring up completion
+                    {
+                        this.TriggerCompletion();
                     }
+
+                    if (m_session != null && !m_session.IsDismissed)
+                    {
+                        m_session.Filter();
+                    }
+
+                    GetLSPCompletions();
+                    handled = true;
                 }
-            }
-            else
-            {
+                //redo the filter if there is a deletion
+                else if (commandID == (uint)VSConstants.VSStd2KCmdID.BACKSPACE ||
+                    commandID == (uint)VSConstants.VSStd2KCmdID.DELETE)
+                {
+                    if(m_session != null && !m_session.IsDismissed)
+                    {
+                        m_session.Filter();
+                    }
+
+                    GetLSPCompletions();
+                    handled = true;
+                }
+
+                if (handled) return VSConstants.S_OK;
                 return retVal;
+
+            }catch(Exception e)
+            {
+                Debug.Write(e);
+                return VSConstants.S_OK;
             }
-            return VSConstants.S_OK;
         }
 
         private bool TriggerCompletion()
         {
+            Debug.Write("TriggerCompletion");
+
             //the caret must be in a non-projection location 
-            SnapshotPoint? caretPoint =
-            m_textView.Caret.Position.Point.GetPoint(
-            textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
+            SnapshotPoint? caretPoint = m_textView.Caret.Position.Point.GetPoint(textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
             if (!caretPoint.HasValue)
             {
                 return false;
             }
 
-            m_session = m_provider.CompletionBroker.CreateCompletionSession
-         (m_textView,
-                caretPoint.Value.Snapshot.CreateTrackingPoint(caretPoint.Value.Position, PointTrackingMode.Positive),
-                true);
+            m_session = m_provider.CompletionBroker.CreateCompletionSession(m_textView,caretPoint.Value.Snapshot.CreateTrackingPoint(caretPoint.Value.Position, PointTrackingMode.Positive),true);
 
             //subscribe to the Dismissed event on the session 
             m_session.Dismissed += this.OnSessionDismissed;
