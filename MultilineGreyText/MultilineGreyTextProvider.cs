@@ -20,7 +20,7 @@ namespace RefactAI
 #pragma warning disable 649, 169
 
         /// <summary>
-        /// Defines the adornment layer for the RefactAI adornment. This layer is ordered
+        /// Defines the adornment layer for the scarlet adornment. This layer is ordered
         /// after the selection layer in the Z-order
         /// </summary>
         [Export(typeof(AdornmentLayerDefinition))]
