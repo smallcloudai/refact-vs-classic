@@ -95,7 +95,7 @@ namespace RefactAI
                 int startLine, startColumn;
                 textViewAdapter.GetLineAndColumn(change.OldSpan.Start, out startLine, out startColumn);
                 int endLine, endColumn;
-                textViewAdapter.GetLineAndColumn(change.OldSpan.Start, out endLine, out endColumn);
+                textViewAdapter.GetLineAndColumn(change.OldSpan.End, out endLine, out endColumn);
                 
                 return new TextDocumentContentChangeEvent
                 {
