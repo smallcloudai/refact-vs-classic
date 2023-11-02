@@ -30,7 +30,7 @@ namespace RefactAI
             if (textView == null)
                 return;
 
-            Func<RefactCompletionCommandHandler> createCommandHandler = delegate () { return new RefactCompletionCommandHandler(textViewAdapter, textView, this, documentFactory); };
+            Func<RefactCompletionCommandHandler> createCommandHandler = delegate () { return new RefactCompletionCommandHandler(textViewAdapter, textView, this); };
             textView.Properties.GetOrCreateSingletonProperty( createCommandHandler);
         }
 

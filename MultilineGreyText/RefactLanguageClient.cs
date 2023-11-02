@@ -9,22 +9,22 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Task = System.Threading.Tasks.Task;
 using Microsoft.VisualStudio.Threading;
 using Newtonsoft.Json.Linq;
-using Task = System.Threading.Tasks.Task;
 using System.ComponentModel.Composition;
+using Microsoft.VisualStudio.LanguageServer.Protocol;
+using System.Windows.Controls;
+using Microsoft.Build.Framework.XamlTypes;
 
 namespace RefactAI
 {
-    [ContentType("code")]
+    [ContentType("any")]//CodeRemoteContentDefinition.CodeRemoteBaseTypeName
     [Export(typeof(ILanguageClient))]
     [RunOnContext(RunningContext.RunOnHost)]
     public class RefactLanguageClient : ILanguageClient, ILanguageClientCustomMessage2
     {
-        public RefactLanguageClient()
-        {
-            Instance = this;
-        }
+        private Connection c;
 
         internal static RefactLanguageClient Instance
         {
@@ -37,6 +37,8 @@ namespace RefactAI
             get;
             set;
         }
+
+        public bool loaded = false;
 
         public event AsyncEventHandler<EventArgs> StartAsync;
         public event AsyncEventHandler<EventArgs> StopAsync;
@@ -52,6 +54,13 @@ namespace RefactAI
 
         public bool ShowNotificationOnInitializeFailed => true;
 
+        internal HashSet<String> files;
+        public RefactLanguageClient()
+        {
+            Instance = this;
+            files = new HashSet<string>();
+        }
+
         public IEnumerable<string> ConfigurationSections
         {
             get
@@ -59,9 +68,41 @@ namespace RefactAI
                 yield return "";
             }
         }
+        
+        public async void AddFile(String filePath, String text)
+        {
+            while (Rpc == null) await Task.Delay(1);
+
+            files.Add(filePath);
+
+            var openParam = new DidOpenTextDocumentParams
+            {
+                TextDocument = new TextDocumentItem
+                {
+                    Uri = new Uri(filePath),
+                    LanguageId = filePath.Substring(filePath.LastIndexOf(".")),
+                    Version = 0,
+                    Text = text
+                }
+            };
+
+            try
+            {
+                await Rpc.NotifyWithParameterObjectAsync("textDocument/didChange", openParam);
+            }
+            catch (Exception e)
+            {
+                Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
+            }
+        }
+        public bool ContainsFile(String file)
+        {
+            return files.Contains(file);
+        }
+
         public async Task<Connection> ActivateAsync(CancellationToken token)
         {
-            ProcessStartInfo info = new ProcessStartInfo();
+              ProcessStartInfo info = new ProcessStartInfo();
 
             info.FileName = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "RefactLSP", @"refact-lsp.exe");
 
@@ -69,14 +110,15 @@ namespace RefactAI
             info.RedirectStandardInput = true;
             info.RedirectStandardOutput = true;
             info.UseShellExecute = false;
-            //info.CreateNoWindow = true;
+            info.CreateNoWindow = true;
 
             Process process = new Process();
             process.StartInfo = info;
 
             if (process.Start())
             {
-                return new Connection(process.StandardOutput.BaseStream, process.StandardInput.BaseStream);
+                this.c = new Connection(process.StandardOutput.BaseStream, process.StandardInput.BaseStream);
+                return c;
             }
 
             return null;
@@ -104,6 +146,7 @@ namespace RefactAI
         {
             if (StartAsync != null)
             {
+                loaded = true;
                 await StartAsync.InvokeAsync(this, EventArgs.Empty);
             }
         }
@@ -141,6 +184,29 @@ namespace RefactAI
             return Task.FromResult(failureContext);
         }
 
+        public async void InvokeTextDocumentDidChangeAsync(Uri fileURI, int version, TextDocumentContentChangeEvent[] contentChanges)
+        {
+            if (Rpc != null)
+            {
+                var changesParam = new DidChangeTextDocumentParams
+                {
+                    ContentChanges = contentChanges,
+                    TextDocument = new VersionedTextDocumentIdentifier
+                    {
+                        Version = version,
+                        Uri = fileURI,
+                    }
+                };
+
+                try
+                {
+                    await Rpc.NotifyWithParameterObjectAsync("textDocument/didChange", changesParam);
+                }catch(Exception e)
+                {
+                    Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
+                }
+            }
+        }
         public async void RefactCompletion(PropertyCollection props, String fileUri, int lineN, int character)
         {
             //Make sure lsp has finished loading
@@ -207,6 +273,10 @@ namespace RefactAI
             public Task HandleNotificationAsync(string methodName, JToken methodParam, Func<JToken, Task> sendNotification)
             {
                 Task t = sendNotification(methodParam);
+                if (methodName == "textDocument/didOpen")
+                {
+                   RefactLanguageClient.Instance.files.Add(methodParam["textDocument"]["uri"].ToString());
+                }
                 return t;
             }
             public async Task<JToken> HandleRequestAsync(string methodName, JToken methodParam, Func<JToken, Task<JToken>> sendRequest)
