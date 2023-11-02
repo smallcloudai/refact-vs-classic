@@ -11,6 +11,7 @@ using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Text.Editor.OptionsExtensionMethods;
 using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace RefactAI
 {
@@ -114,6 +115,11 @@ namespace RefactAI
 
             var height = view.LineHeight * (currentSuggestion.Item2.Length - 1);
 
+            if(currentTextLineN == 0 && currentSnapshot.Lines.Count() == 1 && String.IsNullOrEmpty(currentSnapshot.GetText()))
+            {
+                height += view.LineHeight;
+            }
+
             yield return new TagSpan<TestTag>(span,new TestTag(0, 0, 0, 0, height, PositionAffinity.Predecessor, stackPanel, this));
         }
 
@@ -162,7 +168,7 @@ namespace RefactAI
                 {
                     string emptySpace = ConvertTabsToSpaces(userText.Substring(0, userText.Length - userText.TrimStart().Length));
                     string editedUserText = emptySpace + userText.TrimStart();
-                    textBlock.Inlines.Add(item: new Run(editedUserText) { Foreground = new SolidColorBrush(Color.FromRgb(0xff, 0x00, 0x00)), Background = greyBrush });
+                    textBlock.Inlines.Add(item: new Run(editedUserText) { Foreground = transparentBrush });
 
                     int length = userText.Trim().Length;
                     int offset = line.Length - line.TrimStart().Length;
