@@ -14,7 +14,7 @@ namespace RefactAI
     [ContentType("text")]
     [TextViewRole(PredefinedTextViewRoles.Interactive)]
     internal class RefactCompletionHandlerProvider : IVsTextViewCreationListener
-    {
+    { 
         [Import]
         internal IVsEditorAdaptersFactoryService AdapterService = null;
         [Import]
@@ -24,6 +24,7 @@ namespace RefactAI
         
         [Import] 
         internal ITextDocumentFactoryService documentFactory = null;
+
         public void VsTextViewCreated(IVsTextView textViewAdapter)
         {
             ITextView textView = AdapterService.GetWpfTextView(textViewAdapter);
@@ -33,6 +34,5 @@ namespace RefactAI
             Func<RefactCompletionCommandHandler> createCommandHandler = delegate () { return new RefactCompletionCommandHandler(textViewAdapter, textView, this); };
             textView.Properties.GetOrCreateSingletonProperty( createCommandHandler);
         }
-
     }
 }
