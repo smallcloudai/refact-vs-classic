@@ -73,6 +73,11 @@ namespace RefactAI
         {
             while (Rpc == null) await Task.Delay(1);
 
+            if (ContainsFile(filePath))
+            {
+                return;
+            }
+
             files.Add(filePath);
 
             var openParam = new DidOpenTextDocumentParams
@@ -80,7 +85,7 @@ namespace RefactAI
                 TextDocument = new TextDocumentItem
                 {
                     Uri = new Uri(filePath),
-                    LanguageId = filePath.Substring(filePath.LastIndexOf(".")),
+                    LanguageId = filePath.Substring(filePath.LastIndexOf(".") + 1),
                     Version = 0,
                     Text = text
                 }
@@ -102,7 +107,7 @@ namespace RefactAI
 
         public async Task<Connection> ActivateAsync(CancellationToken token)
         {
-              ProcessStartInfo info = new ProcessStartInfo();
+            ProcessStartInfo info = new ProcessStartInfo();
 
             info.FileName = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "RefactLSP", @"refact-lsp.exe");
 
@@ -186,7 +191,7 @@ namespace RefactAI
 
         public async void InvokeTextDocumentDidChangeAsync(Uri fileURI, int version, TextDocumentContentChangeEvent[] contentChanges)
         {
-            if (Rpc != null)
+            if (Rpc != null && ContainsFile(fileURI.ToString()))
             {
                 var changesParam = new DidChangeTextDocumentParams
                 {
@@ -207,12 +212,12 @@ namespace RefactAI
                 }
             }
         }
-        public async void RefactCompletion(PropertyCollection props, String fileUri, int lineN, int character)
+        public async Task<string> RefactCompletion(PropertyCollection props, String fileUri, int lineN, int character)
         {
             //Make sure lsp has finished loading
             if(this.Rpc == null)
             {
-                return;
+                return null;
             }
 
             //catching server errors
@@ -246,18 +251,12 @@ namespace RefactAI
                     suggestions.Add(s["code_completion"].ToString());
                 }
 
-                var key = typeof(MultilineGreyTextTagger);
-                if (props.ContainsProperty(key))
-                {
-                    var tagger = props.GetProperty<MultilineGreyTextTagger>(key);
-                    tagger.SetSuggestion(suggestions[0]);
-                }
-
-
+                return suggestions[0];
             }
             catch (Exception e)
             {
                 Debug.Write("Error " + e.ToString());
+                return null;
             }
         }
 

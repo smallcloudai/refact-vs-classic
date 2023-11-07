@@ -12,6 +12,10 @@ using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Text.Editor.OptionsExtensionMethods;
 using System.Text.RegularExpressions;
 using System.Linq;
+using static System.Net.Mime.MediaTypeNames;
+using System.Windows.Media.TextFormatting;
+using System.Reflection;
+using Microsoft.VisualStudio.PlatformUI;
 
 namespace RefactAI
 {
@@ -44,6 +48,7 @@ namespace RefactAI
         ///  line number the suggestion should be displayed at
         private int currentTextLineN;
         private int currentVisualLineN;
+        private int suggestionIndex;
 
         /// suggestion to display in multiline 
         /// first string is to match against second item: array is for formatting
@@ -91,7 +96,14 @@ namespace RefactAI
         }
         public String GetSuggestion()
         {
-            return suggestion.Item1;
+            if(suggestion != null && showSuggestion)
+            {
+                return suggestion.Item1;
+            }
+            else
+            {
+                return "";
+            }
         }
 
         //This an iterator that is used to iterate through all of the test tags
@@ -170,10 +182,12 @@ namespace RefactAI
                     string editedUserText = emptySpace + userText.TrimStart();
                     textBlock.Inlines.Add(item: new Run(editedUserText) { Foreground = transparentBrush });
 
-                    int length = userText.Trim().Length;
-                    int offset = line.Length - line.TrimStart().Length;
-                    string remainder = line.Substring(length + offset);
-                    textBlock.Inlines.Add(item: new Run(remainder) { Foreground = greyBrush });
+                    if(line.Length > suggestionIndex)
+                    {
+                        int offset = line.Length - line.TrimStart().Length;
+                        string remainder = line.Substring(suggestionIndex + offset);
+                        textBlock.Inlines.Add(item: new Run(remainder) { Foreground = greyBrush });
+                    }
                 }
                 else
                 {
@@ -245,6 +259,46 @@ namespace RefactAI
             return n;
         }
 
+        int nextNonWhitespace(String s, int index)
+        {
+            for (; index < s.Length && Char.IsWhiteSpace(s[index]); index++) ; ;
+            return index;
+        }
+
+        int CompareStrings(String a, String b)
+        {
+            int a_index = 0, b_index = 0;
+            while(a_index < a.Length && b_index < b.Length)
+            {
+                char aChar = a[a_index];
+                char bChar = b[b_index];
+                if (aChar == bChar)
+                {
+                    a_index++;
+                    b_index++;
+                }else
+                {
+                    if (Char.IsWhiteSpace(bChar))
+                    {
+                        b_index = nextNonWhitespace(b, b_index);
+
+                        continue;
+                    }
+
+                    if (Char.IsWhiteSpace(aChar) && (b_index >= 1 && Char.IsWhiteSpace(b[b_index - 1])))
+                    {
+                        a_index = nextNonWhitespace(a, a_index);
+
+                        continue;
+                    }
+
+                    return -1;
+                }
+            }
+
+            return a_index >= a.Length ? b_index : -1;
+        }
+
         //Check if the text in the editor is a substring of the the suggestion text 
         //If it matches return the line number of the suggestion text that matches the current line in the editor 
         //else return -1
@@ -257,32 +311,17 @@ namespace RefactAI
 
             int index = suggestion.IndexOf(line);
             int endPos = index + line.Length;
+            int firstLineBreak = suggestion.IndexOf('\n');
 
-            if (index > -1)
+            if (index > -1 && (firstLineBreak == -1 || endPos < firstLineBreak))
             {
-                int firstLineBreak = suggestion.IndexOf('\n');
-                if (firstLineBreak == -1 || endPos < firstLineBreak)
-                {
-                    return index == 0 ? 0 : -1;
-                }
-                else
-                {
-                    int nLines = GetOccurenceOfLetter(suggestion.Substring(0, endPos), '\n');
-
-                    if (startLine >= nLines)
-                    {
-                        string fullText = "";
-                        for (int i = startLine - nLines; i <= startLine; i++)
-                        {
-                            fullText += newSnapshot.GetLineFromLineNumber(i).GetText().Trim() + "\n";
-                        }
-                        return suggestion.IndexOf(fullText.TrimEnd()) > -1 ? nLines : -1;
-                    }
-                }
-
+                return index == 0 ? line.Length : -1;
             }
-
-            return -1;
+            else
+            {
+                int res = CompareStrings(line, suggestion);
+                return res >= 0 ? res : -1;
+            }
         }
 
         int GetCurrentTextLine()
@@ -326,10 +365,11 @@ namespace RefactAI
             //else
             //  clear suggestions
 
-            int suggestionLineN = CheckSuggestion(newSnapshot, suggestion.Item1, line, textLineN);
-            if (suggestionLineN >= 0)
+            int suggestionIndex = CheckSuggestion(newSnapshot, suggestion.Item1, line, textLineN);
+            if (suggestionIndex >= 0)
             {
                 this.currentTextLineN = textLineN;
+                this.suggestionIndex = suggestionIndex;
                 ShowSuggestion(untrimLine, suggestion.Item2, 0);
             }
             else
