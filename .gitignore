@@ -9,6 +9,7 @@
 *.svclog
 .vs/
 .vscode/settings.json
+MultilineGreyText/Resources/refact-lsp.exe
 
 # Build results
 [Aa]rtifacts/
