@@ -5,46 +5,52 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:RefactAI"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-        <StackPanel>
-            <TextBlock>Refactai: <Bold>Address URL</Bold></TextBlock>
+             d:DesignHeight="686.066" d:DesignWidth="800"
+             FontSize="13"
+    >
+
+    <Grid Height="742" VerticalAlignment="Top">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="10*"/>
+            <RowDefinition Height="213*"/>
+            <RowDefinition Height="0*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Margin="10,6,10,10" Grid.RowSpan="2" Grid.Row="1">
+            <TextBlock Margin="0 0 0 10">Refactai: <Bold>Address URL</Bold></TextBlock>
             <TextBlock>For enterprise, put there your company's server address. Your admin should have emailed that to you.</TextBlock>
             <TextBlock>For self-hosted, use something like http://127.0.0.1:8008/</TextBlock>
             <TextBlock>For inference in public cloud, use "Refact" or "HF"</TextBlock>
-            <TextBox x:Name="AddressURL" TextChanged="AddressURL_textChanged" Width="200" MaxLength="100" HorizontalAlignment="Left" />
+            <TextBox Margin="0 10 0 10" x:Name="AddressURL" TextChanged="AddressURL_textChanged" Width="422" MaxLength="100" HorizontalAlignment="Left" />
 
-            <TextBlock>Refactai: <Bold>Api Key</Bold></TextBlock>
-            <TextBlock>"Secret API Key. It's used to authenticate your requests. It's filled automatically on first login, you don't have to change it."</TextBlock>
-            <TextBox x:Name="APIKey" TextChanged="APIKey_textChanged" Width="200" MaxLength="100" HorizontalAlignment="Left" />
+            <TextBlock Margin="0 5 0 10">Refactai: <Bold>Api Key</Bold></TextBlock>
+            <TextBlock Text="Secret API Key. It's used to authenticate your requests."/>
+            <TextBox Margin="0 10 0 10" x:Name="APIKey" TextChanged="APIKey_textChanged" Width="421" MaxLength="422" HorizontalAlignment="Left" />
 
-            <TextBlock>Refactai: <Bold>Code Completion Model</Bold></TextBlock>
+            <TextBlock Margin="0 5 0 10">Refactai: <Bold>Code Completion Model</Bold></TextBlock>
             <TextBlock>Which model to use, for example "bigcode/starcoder". Leave blank if not sure</TextBlock>
-            <TextBox x:Name="CodeCompletionModel" TextChanged="CodeCompletionModel_textChanged" Width="200" MaxLength="100" HorizontalAlignment="Left" />
+            <TextBox Margin="0 10 0 10" x:Name="CodeCompletionModel" TextChanged="CodeCompletionModel_textChanged" Width="422" MaxLength="100" HorizontalAlignment="Left" />
 
-            <TextBlock>Refactai: <Bold>Code Completion Model Works Like Model</Bold></TextBlock>
+            <TextBlock Margin="0 5 0 10">Refactai: <Bold>Code Completion Model Works Like Model</Bold></TextBlock>
             <TextBlock>If a model you want is not supported, and you feel adventurous, you can try to use it in the same way as another known model.</TextBlock>
-            <TextBox x:Name="CodeCompletionModelOther" TextChanged="CodeCompletionModelOther_textChanged" Width="200" MaxLength="100" HorizontalAlignment="Left" />
+            <TextBox Margin="0 10 0 10" x:Name="CodeCompletionModelOther" TextChanged="CodeCompletionModelOther_textChanged" Width="422" MaxLength="100" HorizontalAlignment="Left" />
 
-            <TextBlock>Refactai: <Bold>Code Completion Scratchpad</Bold></TextBlock>
+            <TextBlock Margin="0 5 0 10">Refactai: <Bold>Code Completion Scratchpad</Bold></TextBlock>
             <TextBlock>Which scratchpad to use, for example "FIM-PSM". Leave blank if not sure.</TextBlock>
-            <TextBox x:Name="CodeCompletionScratchpad" TextChanged="CodeCompletionScratchpad_textChanged" Width="200" MaxLength="100" HorizontalAlignment="Left" />
+            <TextBox Margin="0 10 0 10" x:Name="CodeCompletionScratchpad" TextChanged="CodeCompletionScratchpad_textChanged" Width="422" MaxLength="100" HorizontalAlignment="Left" />
 
-            <TextBlock>Refactai: <Bold>Pause Completion</Bold></TextBlock>
-            <CheckBox x:Name="pPauseCompletion" Content="Pause automatic code suggestions. Manual activation still works." HorizontalAlignment="Left"
-                  Margin="30,36,0,0" VerticalAlignment="Top"
+            <TextBlock Margin="0 5 0 10">Refactai: <Bold>Pause Completion</Bold></TextBlock>
+            <CheckBox x:Name="pPauseCompletion" Content="Pause automatic code suggestions. Manual activation still works."
                   IsThreeState="False"
                   Checked="pPauseCompletion_Checked" Unchecked="pPauseCompletion_Unchecked"/>
 
-            <TextBlock>Refactai: <Bold>Telemetry Basic</Bold></TextBlock>
-            <CheckBox x:Name="pTelemetryBasic" Content="Send errors for debugging, human/robot character counters." HorizontalAlignment="Left"
-                  Margin="30,36,0,0" VerticalAlignment="Top"
+            <TextBlock Margin="0 15 0 10">Refactai: <Bold>Telemetry Basic</Bold></TextBlock>
+            <CheckBox x:Name="pTelemetryBasic" Content="Send errors for debugging, human/robot character counters."
                   IsThreeState="False"
                   Checked="pTelemetryBasic_Checked" Unchecked="pTelemetryBasic_Unchecked"/>
 
-            <TextBlock>Refactai: <Bold>Telemetry Code Snippets</Bold></TextBlock>
-            <CheckBox x:Name="pTelemetryCodeSnippets" Content="Send corrected code snippets." HorizontalAlignment="Left"
-                  Margin="30,36,0,0" VerticalAlignment="Top"
+            <TextBlock Margin="0 15 0 10">Refactai: <Bold>Telemetry Code Snippets</Bold></TextBlock>
+            <CheckBox x:Name="pTelemetryCodeSnippets" Content="Send corrected code snippets."
                   IsThreeState="False"
                   Checked="pTelemetryCodeSnippets_Checked" Unchecked="pTelemetryCodeSnippets_Unchecked"/>
         </StackPanel>
