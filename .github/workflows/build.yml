@@ -1,5 +1,11 @@
 name: CI build
 
+env:
+  config: Release
+  refactSolution: RefactExtension.sln
+  vsixContainer: ${{ github.workspace }}\RefactExtension.vsix
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
 on:
   # Trigger the workflow on any pull request
   pull_request:
@@ -30,6 +36,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
+          submodules: true
           fetch-depth: ${{ env.FETCH_DEPTH }}
           
       - name: Download artifact
@@ -40,10 +47,28 @@ jobs:
           workflow: build.yml
           repo: smallcloudai/refact-lsp
           branch: main 
-          path: ./MultilineGreyText/RefactLSP
+          path: ${{ github.workspace }}/MultilineGreyText/Resources
           name: dist-${{ matrix.target }}
+      
+      - name: Nerdbank.GitVersioning
+        uses: aarnott/nbgv@v0.3
+        id: nbgv
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v1.0.0
+      
+      - name: Setup NuGet.exe
+        uses: nuget/setup-nuget@v1
         with:
-          path: ./MultilineGreyText/RefactLSP/refact-lsp.exe
+          nuget-version: 'latest'
+      - run: nuget restore ${{ env.refactSolution }}
+
+      - name: MSBuild ${{ env.refactSolution }}
+        run: |
+          msbuild ${{ env.refactSolution }} /p:Configuration=${{ env.config }} /p:TargetVsixContainer=${{ env.vsixContainer }} /p:DeployExtension=False /verbosity:minimal
+        
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ env.refactSolution }-${{ matrix.target }}-${{ steps.nbgv.outputs.SemVer2 }}
+          path: ${{ env.vsixContainer }}
