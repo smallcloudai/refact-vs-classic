@@ -14,8 +14,6 @@ using Microsoft.VisualStudio.Threading;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.LanguageServer.Protocol;
-using System.Windows.Controls;
-using Microsoft.Build.Framework.XamlTypes;
 
 namespace RefactAI
 {
@@ -109,7 +107,7 @@ namespace RefactAI
         {
             ProcessStartInfo info = new ProcessStartInfo();
 
-            info.FileName = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "RefactLSP", @"refact-lsp.exe");
+            info.FileName = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources", @"refact-lsp.exe");
 
             info.Arguments = GetArgs();
             info.RedirectStandardInput = true;
