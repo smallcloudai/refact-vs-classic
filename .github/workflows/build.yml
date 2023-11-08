@@ -70,5 +70,5 @@ jobs:
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v1
         with:
-          name: ${{ env.refactSolution }}-${{ matrix.target }}-${{ steps.nbgv.outputs.SemVer2 }}
+          name: ${{ matrix.target }}-${{ steps.nbgv.outputs.SemVer2 }}-${{ env.refactSolution }}
           path: ${{ env.vsixContainer }}
