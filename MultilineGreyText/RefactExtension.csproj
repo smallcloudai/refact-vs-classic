@@ -132,7 +132,7 @@
     <VSCTCompile Include="RefactPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
-    <Content Include="RefactLSP\refact-lsp.exe">
+    <Content Include="Resources\refact-lsp.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
