@@ -12,15 +12,10 @@ using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Text.Editor.OptionsExtensionMethods;
 using System.Text.RegularExpressions;
 using System.Linq;
-using static System.Net.Mime.MediaTypeNames;
-using System.Windows.Media.TextFormatting;
-using System.Reflection;
-using Microsoft.VisualStudio.PlatformUI;
 
-namespace RefactAI
-{
-    internal sealed class MultilineGreyTextTagger : ITagger<TestTag>
-    {
+namespace RefactAI{
+
+    internal sealed class MultilineGreyTextTagger : ITagger<TestTag>{
         /// panel with multiline grey text
         private StackPanel stackPanel;
 
@@ -50,12 +45,11 @@ namespace RefactAI
         private int currentVisualLineN;
         private int suggestionIndex;
 
-        /// suggestion to display in multiline 
+        /// suggestion to display
         /// first string is to match against second item: array is for formatting
         private static Tuple<String, String[]> suggestion = null;
 
-        public void SetSuggestion(String newSuggestion)
-        {
+        public void SetSuggestion(String newSuggestion){
             ClearSuggestion();
 
             CaretPosition caretPosition = view.Caret.Position;
@@ -73,8 +67,7 @@ namespace RefactAI
             Update();
         }
 
-        public MultilineGreyTextTagger(IWpfTextView view, ITextBuffer buffer)
-        {
+        public MultilineGreyTextTagger(IWpfTextView view, ITextBuffer buffer){
             this.stackPanel = new StackPanel();
 
             this.buffer = buffer;
@@ -90,18 +83,14 @@ namespace RefactAI
             this.greyBrush = new SolidColorBrush(Colors.Gray);
         }
 
-        public bool IsSuggestionActive()
-        {
+        public bool IsSuggestionActive(){
             return showSuggestion;
         }
-        public String GetSuggestion()
-        {
-            if(suggestion != null && showSuggestion)
-            {
+
+        public String GetSuggestion(){
+            if(suggestion != null && showSuggestion){
                 return suggestion.Item1;
-            }
-            else
-            {
+            }else{
                 return "";
             }
         }
@@ -109,11 +98,9 @@ namespace RefactAI
         //This an iterator that is used to iterate through all of the test tags
         //tags are like html tags they mark places in the view to modify how those sections look
         //Testtag is a tag that tells the editor to add empty space
-        public IEnumerable<ITagSpan<TestTag>> GetTags(NormalizedSnapshotSpanCollection spans)
-        {
+        public IEnumerable<ITagSpan<TestTag>> GetTags(NormalizedSnapshotSpanCollection spans){
            var currentSuggestion = suggestion;
-           if (!showSuggestion || currentSuggestion.Item2.Length <= 1)
-           {
+           if (!showSuggestion || currentSuggestion.Item2.Length <= 1){
                 yield break;
            }
 
@@ -127,8 +114,7 @@ namespace RefactAI
 
             var height = view.LineHeight * (currentSuggestion.Item2.Length - 1);
 
-            if(currentTextLineN == 0 && currentSnapshot.Lines.Count() == 1 && String.IsNullOrEmpty(currentSnapshot.GetText()))
-            {
+            if(currentTextLineN == 0 && currentSnapshot.Lines.Count() == 1 && String.IsNullOrEmpty(currentSnapshot.GetText())){
                 height += view.LineHeight;
             }
 
@@ -138,8 +124,7 @@ namespace RefactAI
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
         //triggers when the editor text buffer changes
-        void BufferChanged(object sender, TextContentChangedEventArgs e)
-        {
+        void BufferChanged(object sender, TextContentChangedEventArgs e){
             // If this isn't the most up-to-date version of the buffer, then ignore it for now (we'll eventually get another change event).
             if (e.After != buffer.CurrentSnapshot)
                 return;
@@ -147,50 +132,41 @@ namespace RefactAI
         }
 
         //used to set formatting of the displayed multi lines
-        public void FormatText(TextBlock block)
-        {
+        public void FormatText(TextBlock block){
             //var pos = snapshot.GetLineFromLineNumber(currentLineN).Start;
-            var line = view.TextViewLines.WpfTextViewLines[currentVisualLineN];
-            var format = line.GetCharacterFormatting(line.Start);
 
-            if(format != null)
-            {
+            var line = view.TextViewLines.FirstVisibleLine;
+            var format = line.GetCharacterFormatting(line.Start);
+            if(format != null){
                 block.FontFamily = format.Typeface.FontFamily;
                 block.FontSize = format.FontRenderingEmSize;
             }
         }
 
-        String ConvertTabsToSpaces(string text)
-        {
+        String ConvertTabsToSpaces(string text){
             int tabSize = view.Options.GetTabSize();
             return Regex.Replace(text, "\t", new string(' ', tabSize));
         }
 
         //Updates the grey text
-        public void UpdateAdornment(IWpfTextView view, string userText, int suggestionStart)
-        {
+        public void UpdateAdornment(IWpfTextView view, string userText, int suggestionStart){
             stackPanel.Children.Clear();
-            for (int i = suggestionStart; i < suggestion.Item2.Length; i++)
-            {
+            for (int i = suggestionStart; i < suggestion.Item2.Length; i++){
                 string line = suggestion.Item2[i];
 
                 TextBlock textBlock = new TextBlock();
 
-                if (i == 0)
-                {
+                if (i == 0){
                     string emptySpace = ConvertTabsToSpaces(userText.Substring(0, userText.Length - userText.TrimStart().Length));
                     string editedUserText = emptySpace + userText.TrimStart();
                     textBlock.Inlines.Add(item: new Run(editedUserText) { Foreground = transparentBrush });
 
-                    if(line.Length > suggestionIndex)
-                    {
+                    if(line.Length > suggestionIndex){
                         int offset = line.Length - line.TrimStart().Length;
                         string remainder = line.Substring(suggestionIndex + offset);
                         textBlock.Inlines.Add(item: new Run(remainder) { Foreground = greyBrush });
                     }
-                }
-                else
-                {
+                }else{
                     textBlock.Inlines.Add(item: new Run(line));
                     textBlock.Foreground = new SolidColorBrush(Colors.Gray);
                 }
@@ -204,8 +180,7 @@ namespace RefactAI
             this.adornmentLayer.RemoveAllAdornments();
 
             //usually only happens the moment a bunch of text has rentered such as an undo operation
-            try
-            {
+            try{
                 ITextSnapshotLine snapshotLine = view.TextSnapshot.GetLineFromLineNumber(currentTextLineN);
                 var start = view.TextViewLines.GetCharacterBounds(snapshotLine.Start);
 
@@ -216,22 +191,18 @@ namespace RefactAI
                 // Add the image to the adornment layer and make it relative to the viewport
                 this.adornmentLayer.AddAdornment(AdornmentPositioningBehavior.TextRelative, span, null, stackPanel, null);
 
-            }catch(ArgumentOutOfRangeException e)
-            {
+            }catch(ArgumentOutOfRangeException e){
                 Debug.Write(e);
             }
         }
 
         //Adds grey text to display
-        private void OnSizeChanged(object sender, EventArgs e)
-        {
-            if (!showSuggestion)
-            {
+        private void OnSizeChanged(object sender, EventArgs e){
+            if (!showSuggestion){
                 return;
             }
 
-            foreach (TextBlock block in stackPanel.Children)
-            {
+            foreach (TextBlock block in stackPanel.Children){
                 FormatText(block);
             }
 
@@ -252,41 +223,35 @@ namespace RefactAI
         }
 
         //returns the number of times letter c appears in s
-        int GetOccurenceOfLetter(String s, char c)
-        { 
+        int GetOccurenceOfLetter(String s, char c){ 
             int n = 0;
             for (int i = 0; (i = s.IndexOf(c, i)) >= 0; i++, n++){}
             return n;
         }
 
-        int nextNonWhitespace(String s, int index)
-        {
+        //skips whitespace
+        int nextNonWhitespace(String s, int index){
             for (; index < s.Length && Char.IsWhiteSpace(s[index]); index++) ; ;
             return index;
         }
 
-        int CompareStrings(String a, String b)
-        {
+        //Compares the two strings to see if a is a prefix of b ignoring whitespace
+        int CompareStrings(String a, String b){
             int a_index = 0, b_index = 0;
-            while(a_index < a.Length && b_index < b.Length)
-            {
+            while(a_index < a.Length && b_index < b.Length){
                 char aChar = a[a_index];
                 char bChar = b[b_index];
-                if (aChar == bChar)
-                {
+                if (aChar == bChar){
                     a_index++;
                     b_index++;
-                }else
-                {
-                    if (Char.IsWhiteSpace(bChar))
-                    {
+                }else{
+                    if (Char.IsWhiteSpace(bChar)){
                         b_index = nextNonWhitespace(b, b_index);
 
                         continue;
                     }
 
-                    if (Char.IsWhiteSpace(aChar) && (b_index >= 1 && Char.IsWhiteSpace(b[b_index - 1])))
-                    {
+                    if (Char.IsWhiteSpace(aChar) && (b_index >= 1 && Char.IsWhiteSpace(b[b_index - 1]))){
                         a_index = nextNonWhitespace(a, a_index);
 
                         continue;
@@ -302,10 +267,8 @@ namespace RefactAI
         //Check if the text in the editor is a substring of the the suggestion text 
         //If it matches return the line number of the suggestion text that matches the current line in the editor 
         //else return -1
-        int CheckSuggestion(ITextSnapshot newSnapshot, String suggestion, String line, int startLine)
-        {
-            if (line.Length == 0)
-            {
+        int CheckSuggestion(ITextSnapshot newSnapshot, String suggestion, String line, int startLine){
+            if (line.Length == 0){
                 return 0;
             }
 
@@ -313,25 +276,21 @@ namespace RefactAI
             int endPos = index + line.Length;
             int firstLineBreak = suggestion.IndexOf('\n');
 
-            if (index > -1 && (firstLineBreak == -1 || endPos < firstLineBreak))
-            {
+            if (index > -1 && (firstLineBreak == -1 || endPos < firstLineBreak)){
                 return index == 0 ? line.Length : -1;
-            }
-            else
-            {
+            }else{
                 int res = CompareStrings(line, suggestion);
                 return res >= 0 ? res : -1;
             }
         }
 
-        int GetCurrentTextLine()
-        {
+        //Gets the line number of the caret
+        int GetCurrentTextLine(){
             CaretPosition caretPosition = view.Caret.Position;
 
             var textPoint = caretPosition.Point.GetPoint(buffer, caretPosition.Affinity);
 
-            if (!textPoint.HasValue)
-            {
+            if (!textPoint.HasValue){
                 return -1;
             }
 
@@ -341,15 +300,13 @@ namespace RefactAI
         //update multiline data
         public void Update(){
 
-            if(suggestion == null)
-            {
+            if(suggestion == null){
                 return;
             }
 
             int textLineN = GetCurrentTextLine();
 
-            if(textLineN < 0)
-            {
+            if(textLineN < 0){
                 return;
             }
 
@@ -366,24 +323,20 @@ namespace RefactAI
             //  clear suggestions
 
             int suggestionIndex = CheckSuggestion(newSnapshot, suggestion.Item1, line, textLineN);
-            if (suggestionIndex >= 0)
-            {
+            if (suggestionIndex >= 0){
                 this.currentTextLineN = textLineN;
                 this.suggestionIndex = suggestionIndex;
                 ShowSuggestion(untrimLine, suggestion.Item2, 0);
-            }
-            else
-            {
+            }else{
                 ClearSuggestion();
             }
         }
 
-        public bool CompleteText()
-        {
+        //Adds the grey text to the file replacing current line in the process
+        public bool CompleteText(){
             int textLineN = GetCurrentTextLine();
 
-            if (textLineN < 0 || textLineN != currentTextLineN)
-            {
+            if (textLineN < 0 || textLineN != currentTextLineN){
                 return false;
             }
 
@@ -391,8 +344,7 @@ namespace RefactAI
             String line = untrimLine.Trim();
 
             int suggestionLineN = CheckSuggestion(this.snapshot, suggestion.Item1, line, currentTextLineN);
-            if(suggestionLineN >= 0)
-            {
+            if(suggestionLineN >= 0){
                 int diff = untrimLine.Length - untrimLine.TrimStart().Length;
                 string whitespace = untrimLine.Substring(0, diff);
                 ReplaceText(whitespace + suggestion.Item1, currentTextLineN);
@@ -403,8 +355,7 @@ namespace RefactAI
         }
 
         //replaces text in the editor
-        void ReplaceText(string text, int lineN)
-        {
+        void ReplaceText(string text, int lineN){
             ClearSuggestion();
 
             SnapshotSpan span = this.snapshot.GetLineFromLineNumber(lineN).Extent;
@@ -415,16 +366,14 @@ namespace RefactAI
         }
 
         //sets up the suggestion for display
-        void ShowSuggestion(String text, String[] suggestion, int suggestionLineStart)
-        {
+        void ShowSuggestion(String text, String[] suggestion, int suggestionLineStart){
             UpdateAdornment(view, text, suggestionLineStart);
             showSuggestion = true;
             MarkDirty();
         }
 
         //removes the suggestion
-        public void ClearSuggestion()
-        {
+        public void ClearSuggestion(){
             if(!showSuggestion) return;
             suggestion = null;
             adornmentLayer.RemoveAllAdornments();
@@ -451,8 +400,7 @@ namespace RefactAI
 
             //lines we are marking dirty
             //currently all of them for simplicity 
-            if (this.TagsChanged != null)
-            {
+            if (this.TagsChanged != null){
                 this.TagsChanged(this, new SnapshotSpanEventArgs(span)); 
             }
         }
