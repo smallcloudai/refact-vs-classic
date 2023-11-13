@@ -1,21 +1,13 @@
 ﻿using Community.VisualStudio.Toolkit;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.Win32;
 using System;
-using System.ComponentModel.Design;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Task = System.Threading.Tasks.Task;
 
-namespace RefactAI
-{
+namespace RefactAI{
+
     /// <summary>
     /// This is the class that implements the package exposed by this assembly.
     /// </summary>
@@ -39,8 +31,7 @@ namespace RefactAI
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [Guid(RefactPackage.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    public sealed class RefactPackage : ToolkitPackage
-    {
+    public sealed class RefactPackage : ToolkitPackage{
         /// <summary>
         /// VSPackage1 GUID string.
         /// </summary>
@@ -49,8 +40,7 @@ namespace RefactAI
         /// <summary>
         /// Initializes a new instance of the <see cref="RefactPackage"/> class.
         /// </summary>
-        public RefactPackage()
-        {
+        public RefactPackage(){
             // Inside this method you can place any initialization code that does not require
             // any Visual Studio service because at this point the package object is created but
             // not sited yet inside Visual Studio environment. The place to do all the other
@@ -66,8 +56,7 @@ namespace RefactAI
         /// <param name="cancellationToken">A cancellation token to monitor for initialization cancellation, which can occur when VS is shutting down.</param>
         /// <param name="progress">A provider for progress updates.</param>
         /// <returns>A task representing the async work of package initialization, or an already completed task if there is none. Do not return null from this method.</returns>
-        protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
-        {
+        protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress){
             await this.RegisterCommandsAsync();
             await RefactAI.PauseRefactCommand.InitializeAsync(this);
         }

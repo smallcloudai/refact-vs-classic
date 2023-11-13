@@ -7,13 +7,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Task = System.Threading.Tasks.Task;
 
-namespace RefactAI
-{
+namespace RefactAI{
+
     /// <summary>
     /// Command handler
     /// </summary>
-    internal sealed class PauseRefactCommand
-    {
+    internal sealed class PauseRefactCommand{
         /// <summary>
         /// Command ID.
         /// </summary>
@@ -35,8 +34,7 @@ namespace RefactAI
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
         /// <param name="commandService">Command service to add command to, not null.</param>
-        private PauseRefactCommand(AsyncPackage package, OleMenuCommandService commandService)
-        {
+        private PauseRefactCommand(AsyncPackage package, OleMenuCommandService commandService){
             this.package = package ?? throw new ArgumentNullException(nameof(package));
             commandService = commandService ?? throw new ArgumentNullException(nameof(commandService));
 
@@ -48,8 +46,7 @@ namespace RefactAI
         /// <summary>
         /// Gets the instance of the command.
         /// </summary>
-        public static PauseRefactCommand Instance
-        {
+        public static PauseRefactCommand Instance{
             get;
             private set;
         }
@@ -57,10 +54,8 @@ namespace RefactAI
         /// <summary>
         /// Gets the service provider from the owner package.
         /// </summary>
-        private Microsoft.VisualStudio.Shell.IAsyncServiceProvider ServiceProvider
-        {
-            get
-            {
+        private Microsoft.VisualStudio.Shell.IAsyncServiceProvider ServiceProvider{
+            get{
                 return this.package;
             }
         }
@@ -69,8 +64,7 @@ namespace RefactAI
         /// Initializes the singleton instance of the command.
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
-        public static async Task InitializeAsync(AsyncPackage package)
-        {
+        public static async Task InitializeAsync(AsyncPackage package){
             // Switch to the main thread - the call to AddCommand in PauseRefactCommand's constructor requires
             // the UI thread.
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
@@ -86,8 +80,7 @@ namespace RefactAI
         /// </summary>
         /// <param name="sender">Event sender.</param>
         /// <param name="e">Event args.</param>
-        private void Execute(object sender, EventArgs e)
-        {
+        private void Execute(object sender, EventArgs e){
             ThreadHelper.ThrowIfNotOnUIThread();
             string message = string.Format(CultureInfo.CurrentCulture, "Inside {0}.MenuItemCallback()", this.GetType().FullName);
             string title = "PauseRefactCommand";

@@ -1,20 +1,20 @@
 ﻿using System.Windows.Controls;
 
-namespace RefactAI
-{
+namespace RefactAI{
+
     /// <summary>
     /// Interaction logic for GeneralOptions.xaml
     /// </summary>
-    public partial class GeneralOptions : UserControl
-    {
-        public GeneralOptions()
-        {
-            InitializeComponent();
-        }
+    public partial class GeneralOptions : UserControl { 
+
         internal GeneralOptionPage generalOptionsPage;
 
-        public void Initialize()
-        {
+        public GeneralOptions() { 
+            InitializeComponent();
+        }
+
+        //Sets up all of the variables to display the current settings
+        public void Initialize(){
             pPauseCompletion.IsChecked = General.Instance.PauseCompletion;
             pTelemetryBasic.IsChecked = General.Instance.TelemetryBasic;
             pTelemetryCodeSnippets.IsChecked = General.Instance.TelemetryCodeSnippets;
@@ -28,64 +28,68 @@ namespace RefactAI
             General.Instance.Save();
         }
 
-        private void pPauseCompletion_Checked(object sender, System.Windows.RoutedEventArgs e)
-        {
+        //pause completion checkbox checked
+        private void pPauseCompletion_Checked(object sender, System.Windows.RoutedEventArgs e){
             General.Instance.PauseCompletion = (bool)pPauseCompletion.IsChecked;
             General.Instance.Save();
         }
 
-        private void pPauseCompletion_Unchecked(object sender, System.Windows.RoutedEventArgs e)
-        {
+        //pause completion checkbox unchecked
+        private void pPauseCompletion_Unchecked(object sender, System.Windows.RoutedEventArgs e){
             General.Instance.PauseCompletion = (bool)pPauseCompletion.IsChecked;
             General.Instance.Save();
         }
 
-        private void pTelemetryBasic_Checked(object sender, System.Windows.RoutedEventArgs e)
-        {
+        //telemetry checked
+        private void pTelemetryBasic_Checked(object sender, System.Windows.RoutedEventArgs e){
             General.Instance.TelemetryBasic = (bool)pTelemetryBasic.IsChecked;
             General.Instance.Save();
         }
 
-        private void pTelemetryBasic_Unchecked(object sender, System.Windows.RoutedEventArgs e)
-        {
+        //telemetry unchecked
+        private void pTelemetryBasic_Unchecked(object sender, System.Windows.RoutedEventArgs e){
             General.Instance.TelemetryBasic = (bool)pTelemetryBasic.IsChecked;
             General.Instance.Save();
         }
 
-        private void pTelemetryCodeSnippets_Checked(object sender, System.Windows.RoutedEventArgs e)
-        {
+        //code snippets checked
+        private void pTelemetryCodeSnippets_Checked(object sender, System.Windows.RoutedEventArgs e){
             General.Instance.TelemetryCodeSnippets = (bool)pTelemetryCodeSnippets.IsChecked;
             General.Instance.Save();
         }
 
-        private void pTelemetryCodeSnippets_Unchecked(object sender, System.Windows.RoutedEventArgs e)
-        {
+        //code snippets unchecked
+        private void pTelemetryCodeSnippets_Unchecked(object sender, System.Windows.RoutedEventArgs e){
             General.Instance.TelemetryCodeSnippets = (bool)pTelemetryCodeSnippets.IsChecked;
             General.Instance.Save();
         }
 
-        private void AddressURL_textChanged(object sender, TextChangedEventArgs args)
-        {
+        //address url text handler
+        private void AddressURL_textChanged(object sender, TextChangedEventArgs args){
             General.Instance.AddressURL = AddressURL.Text;
             General.Instance.Save();
         }
-        private void APIKey_textChanged(object sender, TextChangedEventArgs args)
-        {
+
+        //api key text handler
+        private void APIKey_textChanged(object sender, TextChangedEventArgs args){
             General.Instance.APIKey = APIKey.Text;
             General.Instance.Save();
         }
-        private void CodeCompletionModel_textChanged(object sender, TextChangedEventArgs args)
-        {
+
+        //code completion model text handler
+        private void CodeCompletionModel_textChanged(object sender, TextChangedEventArgs args){
             General.Instance.CodeCompletionModel = CodeCompletionModel.Text;
             General.Instance.Save();
         }
-        private void CodeCompletionModelOther_textChanged(object sender, TextChangedEventArgs args)
-        {
+
+        //code completion other text handler
+        private void CodeCompletionModelOther_textChanged(object sender, TextChangedEventArgs args){
             General.Instance.CodeCompletionModelOther = CodeCompletionModelOther.Text;
             General.Instance.Save();
         }
-         private void CodeCompletionScratchpad_textChanged(object sender, TextChangedEventArgs args)
-        {
+
+        //code completion scratchpad text handler
+        private void CodeCompletionScratchpad_textChanged(object sender, TextChangedEventArgs args){
             General.Instance.CodeCompletionScratchpad = CodeCompletionScratchpad.Text;
             General.Instance.Save();
         }
