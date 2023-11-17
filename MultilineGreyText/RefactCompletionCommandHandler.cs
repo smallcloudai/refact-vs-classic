@@ -18,6 +18,7 @@ using Microsoft.VisualStudio.LanguageServer.Protocol;
 namespace RefactAI{
 
     internal class RefactCompletionCommandHandler : IOleCommandTarget{
+      
         //LanguageClientMetadata is needed to manually load LSP
         private class LanguageClientMetadata : ILanguageClientMetadata{
             public LanguageClientMetadata(string[] contentTypes, string clientName = null){
@@ -64,7 +65,9 @@ namespace RefactAI{
             textViewAdapter.AddCommandFilter(this, out m_nextCommandHandler);            
         }
 
-        //Needed purely for C/C++
+        //Starts the refactlsp manually
+        //Needed mostly for C/C++ 
+        //some other languages don't start the refactlsp consistently but c/c++ appears to never start the lsp
         void LoadLsp(String file, ITextDocument doc){
             IComponentModel componentModel = (IComponentModel)m_provider.ServiceProvider.GetService(typeof(SComponentModel));
             ILanguageClientBroker clientBroker = componentModel.GetService<ILanguageClientBroker>();
@@ -81,6 +84,16 @@ namespace RefactAI{
 
                 //listen for changes
                 ((ITextBuffer2)doc.TextBuffer).ChangedHighPriority += ChangeEvent;
+            }
+        }
+
+        private MultilineGreyTextTagger GetTagger(){
+            var key = typeof(MultilineGreyTextTagger);
+            var props = m_textView.TextBuffer.Properties;
+            if (props.ContainsProperty(key)){
+                return props.GetProperty<MultilineGreyTextTagger>(key);
+            }else{
+                return null;
             }
         }
 
@@ -169,10 +182,8 @@ namespace RefactAI{
                     return;
                 }
 
-                var key = typeof(MultilineGreyTextTagger);
-                var props = m_textView.TextBuffer.Properties;
-                if (props.ContainsProperty(key)){
-                    var tagger = props.GetProperty<MultilineGreyTextTagger>(key);
+                var tagger = GetTagger();
+                if(tagger != null){ 
                     tagger.SetSuggestion(s);
                 }
             }
@@ -205,23 +216,23 @@ namespace RefactAI{
             }
 
             //check for a commit character
-            if (!hasCompletionUpdated &&
-                (nCmdID == (uint)VSConstants.VSStd2KCmdID.RETURN ||
-                nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB)){
+            if (!hasCompletionUpdated && nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB){
 
-                var key = typeof(MultilineGreyTextTagger);
-                var props = m_textView.TextBuffer.Properties;
+                var tagger = GetTagger();
 
-                if (props.ContainsProperty(key)){
-
-                    var tagger = props.GetProperty<MultilineGreyTextTagger>(key);
-                    if (tagger.IsSuggestionActive() && tagger.CompleteText()){
+                if (tagger != null){
+                    if (tagger.IsSuggestionActive() && tagger.CompleteText()){                        
                         ClearCompletionSessions();
-
                         return VSConstants.S_OK;
                     }else{
                         tagger.ClearSuggestion();
                     }
+                }
+
+            }else if(nCmdID == (uint)VSConstants.VSStd2KCmdID.RETURN){
+                var tagger = GetTagger();
+                if (tagger != null){
+                    tagger.ClearSuggestion();
                 }
             }
 
@@ -243,9 +254,7 @@ namespace RefactAI{
             if (!typedChar.Equals(char.MinValue) && char.IsLetterOrDigit(typedChar)){
                 GetLSPCompletions();
                 handled = true;
-            }
-
-            else if (commandID == (uint)VSConstants.VSStd2KCmdID.BACKSPACE || commandID == (uint)VSConstants.VSStd2KCmdID.DELETE){
+            }else if (commandID == (uint)VSConstants.VSStd2KCmdID.BACKSPACE || commandID == (uint)VSConstants.VSStd2KCmdID.DELETE){
                 GetLSPCompletions();
                 handled = true;
             }
