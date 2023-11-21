@@ -229,7 +229,7 @@ namespace RefactAI{
                     }
                 }
 
-            }else if(nCmdID == (uint)VSConstants.VSStd2KCmdID.RETURN){
+            }else if(nCmdID == (uint)VSConstants.VSStd2KCmdID.RETURN || nCmdID == (uint)VSConstants.VSStd2KCmdID.CANCEL){
                 var tagger = GetTagger();
                 if (tagger != null){
                     tagger.ClearSuggestion();
@@ -251,7 +251,7 @@ namespace RefactAI{
             bool handled = false;
 
             //gets lsp completions on added character or deletions
-            if (!typedChar.Equals(char.MinValue) && char.IsLetterOrDigit(typedChar)){
+            if (!typedChar.Equals(char.MinValue)){
                 GetLSPCompletions();
                 handled = true;
             }else if (commandID == (uint)VSConstants.VSStd2KCmdID.BACKSPACE || commandID == (uint)VSConstants.VSStd2KCmdID.DELETE){
