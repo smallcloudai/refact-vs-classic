@@ -60,11 +60,23 @@ namespace RefactAI{
             ITextSnapshot newSnapshot = buffer.CurrentSnapshot;
             int lineN = newSnapshot.GetLineNumberFromPosition(point.Value);
 
-            String line = newSnapshot.GetLineFromLineNumber(lineN).GetText().Trim();
+            String line = newSnapshot.GetLineFromLineNumber(lineN).GetText().TrimStart();
 
             String combineSuggestion = line + newSuggestion;
             suggestion = new Tuple<String, String[]>(combineSuggestion, combineSuggestion.Split('\n'));
+            view.LostAggregateFocus += LostFocus;
+            view.Caret.PositionChanged += CaretUpdate;
             Update();
+        }
+
+        private void CaretUpdate(object sender, CaretPositionChangedEventArgs e){
+            if(showSuggestion && GetCurrentTextLine() != currentTextLineN){
+                ClearSuggestion();
+            }
+        }
+
+        private void LostFocus(object sender, EventArgs e){
+            ClearSuggestion();
         }
 
         public MultilineGreyTextTagger(IWpfTextView view, ITextBuffer buffer){
@@ -100,7 +112,7 @@ namespace RefactAI{
         //Testtag is a tag that tells the editor to add empty space
         public IEnumerable<ITagSpan<TestTag>> GetTags(NormalizedSnapshotSpanCollection spans){
            var currentSuggestion = suggestion;
-           if (!showSuggestion || currentSuggestion.Item2.Length <= 1){
+           if (!showSuggestion || currentSuggestion == null || currentSuggestion.Item2.Length <= 1){
                 yield break;
            }
 
@@ -235,6 +247,10 @@ namespace RefactAI{
             return index;
         }
 
+        bool IsNameChar(char c){
+            return Char.IsLetterOrDigit(c) || c == '_';
+        }
+
         //Compares the two strings to see if a is a prefix of b ignoring whitespace
         int CompareStrings(String a, String b){
             int a_index = 0, b_index = 0;
@@ -251,7 +267,7 @@ namespace RefactAI{
                         continue;
                     }
 
-                    if (Char.IsWhiteSpace(aChar) && (b_index >= 1 && Char.IsWhiteSpace(b[b_index - 1]))){
+                    if (Char.IsWhiteSpace(aChar) && (b_index >= 1 && !IsNameChar(b[b_index - 1]))){
                         a_index = nextNonWhitespace(a, a_index);
 
                         continue;
