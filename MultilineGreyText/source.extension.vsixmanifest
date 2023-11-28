@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="RefactExtension.565c0987-99df-4b97-a332-9c26d2e5fd00" Version="1.0" Language="en-US" Publisher="James Brownlee" />
-        <DisplayName>Refact Extension</DisplayName>
-        <Description>Empty VSIX Project.</Description>
+        <Identity Id="codify.565c0987-99df-4b97-a332-9c26d2e5fd00" Version="0.1" Language="en-US" Publisher="smallcloud" />
+        <DisplayName>Refact</DisplayName>
+        <Description>Refact.ai: The AI Assistant for Code Writing and Refactoring</Description>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
             <ProductArchitecture>amd64</ProductArchitecture>
+        </InstallationTarget>
+        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,18.0)">
+            <ProductArchitecture>arm64</ProductArchitecture>
+        </InstallationTarget>
+        <InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="[17.0, 18.0)">
+            <ProductArchitecture>amd64</ProductArchitecture>
+        </InstallationTarget>
+        <InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="[17.0,18.0)">
+            <ProductArchitecture>arm64</ProductArchitecture>
         </InstallationTarget>
     </Installation>
     <Dependencies>
