@@ -89,6 +89,7 @@
     </None>
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
+      <Generator>VsixManifestGenerator</Generator>
     </None>
   </ItemGroup>
   <ItemGroup>

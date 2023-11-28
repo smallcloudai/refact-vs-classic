@@ -35,10 +35,15 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
+      
+      - name: Set UUID
+        id: generate-uuid
+        uses: filipstefansson/uuid-action@v1
 
-      - name: Install VSCE
+      - name: Setup ID
+        shell: bash
         run: |
-          npm install -g @vscode/vsce
+          sed -i 's\REPLACE_ID\${{ steps.generate-uuid.outputs.uuid }}\g' MultilineGreyText/source.extension.vsixmanifest
           
       - name: Download artifact
         id: download-artifact
@@ -69,11 +74,19 @@ jobs:
       - name: MSBuild ${{ env.refactSolution }}
         run: |
           msbuild ${{ env.refactSolution }} /p:Configuration=${{ env.config }} /p:TargetVsixContainer=${{ env.vsixContainer }} /p:DeployExtension=False /verbosity:minimal
-     
-      - name: Publish VSCE extension
-        shell: bash
-        run: |
-          vsce publish --pat ${{secrets.VSCE_PAT}} --packagePath ${{ env.vsixContainer }}
+
+      - name: Publish release to marketplace
+        id: publish
+        uses: cezarypiatek/VsixPublisherAction@1.0
+        with:
+          # (Required) Personal access token to perform action on the VS Marketplace
+          personal-access-code: ${{ secrets.VSCE_PAT }}
+
+          # (Required) Path to the manifest used for the publish
+          publish-manifest-file: MultilineGreyText/vsixManifest.json
+
+          # (Optional) Path to an extension package
+          extension-file: ${{ env.vsixContainer }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
