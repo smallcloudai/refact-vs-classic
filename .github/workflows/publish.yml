@@ -18,10 +18,10 @@ jobs:
             target: x86_64-pc-windows-msvc
             code-target: win32-x64
             arch: x64
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-            code-target: win32-arm64
-            arch: arm64
+          # - os: windows-latest
+          #   target: aarch64-pc-windows-msvc
+          #   code-target: win32-arm64
+          #   arch: arm64
 
     env:
       LLM_LS_TARGET: ${{ matrix.target }}
