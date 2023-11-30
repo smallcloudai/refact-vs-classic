@@ -14,6 +14,7 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.LanguageServer.Protocol;
+using System.Text.RegularExpressions;
 
 namespace RefactAI{
 
@@ -130,6 +131,11 @@ namespace RefactAI{
             return m_nextCommandHandler.QueryStatus(ref pguidCmdGroup, cCmds, prgCmds, pCmdText);
         }
 
+        public bool IsInline(int lineN){
+            var text = m_textView.TextSnapshot.GetLineFromLineNumber(lineN).GetText();
+            return !String.IsNullOrWhiteSpace(text);
+        }
+
         //gets recommendations from LSP
         public void GetLSPCompletions(){
            if (!General.Instance.PauseCompletion){
@@ -143,8 +149,14 @@ namespace RefactAI{
                     if (res == VSConstants.S_OK && RefactLanguageClient.Instance != null){
                         //Make sure caret is at the end of a line
                         String untrimLine = m_textView.TextBuffer.CurrentSnapshot.GetLineFromLineNumber(lineN).GetText();
-                        if(characterN < untrimLine.Length){  
-                            return;
+                        if(characterN < untrimLine.Length){
+                            String afterCaret = untrimLine.Substring(characterN);
+                            String escapedSymbols = Regex.Escape(":(){ },.\"\';");
+
+                            String pattern ="[\\s\\t\\n\\r" + escapedSymbols + "]*";
+                            Match m = Regex.Match(afterCaret, pattern, RegexOptions.IgnoreCase);
+                            if(!m.Success)
+                                return;
                         }
 
                         if (!client.ContainsFile(filePath)){
@@ -152,7 +164,8 @@ namespace RefactAI{
                         }
 
                         hasCompletionUpdated = false;
-                        var refactRes = client.RefactCompletion(m_textView.TextBuffer.Properties, filePath, lineN, characterN);
+                        bool multiline = !IsInline(lineN);
+                        var refactRes = client.RefactCompletion(m_textView.TextBuffer.Properties, filePath, lineN, multiline ? 0 : characterN, multiline);
                         ShowRefactSuggestion(refactRes, new Tuple<int, int>(lineN, characterN));
                     }
                 }
@@ -183,8 +196,8 @@ namespace RefactAI{
                 }
 
                 var tagger = GetTagger();
-                if(tagger != null){ 
-                    tagger.SetSuggestion(s);
+                if(tagger != null && s != null){
+                    tagger.SetSuggestion(s, IsInline(lineN), characterN);
                 }
             }
         }
@@ -251,7 +264,7 @@ namespace RefactAI{
             bool handled = false;
 
             //gets lsp completions on added character or deletions
-            if (!typedChar.Equals(char.MinValue)){
+            if (!typedChar.Equals(char.MinValue) || commandID == (uint)VSConstants.VSStd2KCmdID.RETURN){
                 GetLSPCompletions();
                 handled = true;
             }else if (commandID == (uint)VSConstants.VSStd2KCmdID.BACKSPACE || commandID == (uint)VSConstants.VSStd2KCmdID.DELETE){

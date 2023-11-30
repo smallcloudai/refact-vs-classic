@@ -5,13 +5,19 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Documents;
 using System.Diagnostics;
-
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Text.Editor.OptionsExtensionMethods;
 using System.Text.RegularExpressions;
 using System.Linq;
+using Microsoft.VisualStudio.TextManager.Interop;
+using System.Reflection;
+using Microsoft.VisualStudio.VCProjectEngine;
+using System.Windows.Media.TextFormatting;
+using Microsoft.VisualStudio.Settings.Internal;
+using System.Windows.Shapes;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace RefactAI{
 
@@ -39,33 +45,67 @@ namespace RefactAI{
 
         /// true if a suggestion should be shown
         private bool showSuggestion = false;
+        private bool inlineSuggestion = false;
+        private bool isTextInsertion = false;
 
         ///  line number the suggestion should be displayed at
         private int currentTextLineN;
         private int currentVisualLineN;
         private int suggestionIndex;
-
+        private int insertionPoint;
+        private int userIndex;
+        private String userEndingText;
         /// suggestion to display
         /// first string is to match against second item: array is for formatting
         private static Tuple<String, String[]> suggestion = null;
+     
+        private InlineGreyTextTagger GetTagger(){
+            var key = typeof(InlineGreyTextTagger);
+            var props = view.TextBuffer.Properties;
+            if (props.ContainsProperty(key)){
+                return props.GetProperty<InlineGreyTextTagger>(key);
+            }else{
+                return null;
+            }
+        }
 
-        public void SetSuggestion(String newSuggestion){
+        public void SetSuggestion(String newSuggestion, bool inline, int caretPoint){
             ClearSuggestion();
+            inlineSuggestion = inline;
 
-            CaretPosition caretPosition = view.Caret.Position;
-            var point = caretPosition.Point.GetPoint(buffer, caretPosition.Affinity);
+            int lineN = GetCurrentTextLine();
 
-            if (!point.HasValue) return;
+            if (lineN < 0) return;
 
-            ITextSnapshot newSnapshot = buffer.CurrentSnapshot;
-            int lineN = newSnapshot.GetLineNumberFromPosition(point.Value);
+            String untrim = buffer.CurrentSnapshot.GetLineFromLineNumber(lineN).GetText();
+            String line = untrim.TrimStart();
+            int offset = untrim.Length - line.Length;
 
-            String line = newSnapshot.GetLineFromLineNumber(lineN).GetText().TrimStart();
-
+   /*         if (caretPoint > untrim.Length){
+                
+                newSuggestion = (new string(' ', caretPoint - untrim.Length)) + newSuggestion;
+            }*/
+            caretPoint = Math.Max(0, caretPoint - offset);
+            
             String combineSuggestion = line + newSuggestion;
+            if (line.Length - caretPoint > 0){
+                String currentText = line.Substring(0, caretPoint);
+                combineSuggestion = currentText + newSuggestion;
+                userEndingText = line.TrimEnd().Substring(caretPoint);                
+                var userIndex = newSuggestion.IndexOf(userEndingText);
+                if(userIndex < 0){
+                    return;
+                }
+                userIndex += currentText.Length;
+
+                this.userIndex = userIndex;
+                isTextInsertion = true;
+                insertionPoint = line.Length - caretPoint;
+            }else{
+                isTextInsertion = false;
+            }
+
             suggestion = new Tuple<String, String[]>(combineSuggestion, combineSuggestion.Split('\n'));
-            view.LostAggregateFocus += LostFocus;
-            view.Caret.PositionChanged += CaretUpdate;
             Update();
         }
 
@@ -93,6 +133,8 @@ namespace RefactAI{
             this.transparentBrush = new SolidColorBrush();
             this.transparentBrush.Opacity = 0;
             this.greyBrush = new SolidColorBrush(Colors.Gray);
+            view.LostAggregateFocus += LostFocus;
+            view.Caret.PositionChanged += CaretUpdate;
         }
 
         public bool IsSuggestionActive(){
@@ -143,6 +185,11 @@ namespace RefactAI{
             this.Update();
         }
 
+        TextRunProperties GetTextFormat(){
+            var line = view.TextViewLines.FirstVisibleLine;
+            return line.GetCharacterFormatting(line.Start);
+        }
+
         //used to set formatting of the displayed multi lines
         public void FormatText(TextBlock block){
             //var pos = snapshot.GetLineFromLineNumber(currentLineN).Start;
@@ -159,34 +206,70 @@ namespace RefactAI{
             int tabSize = view.Options.GetTabSize();
             return Regex.Replace(text, "\t", new string(' ', tabSize));
         }
+        void FormatTextBlock(TextBlock textBlock){
+            textBlock.FontStyle = FontStyles.Normal;
+            textBlock.FontWeight = FontWeights.Normal;
+        }
+
+        TextBlock CreateTextBox(string text, Brush textColour){
+            TextBlock textBlock = new TextBlock();
+            textBlock.Inlines.Add(item: new Run(text) { Foreground = textColour});
+            FormatTextBlock(textBlock);
+            return textBlock;
+        }
+
+        void AddSuffixTextBlocks (int start, string line, string userText){
+            if (line.Length <= suggestionIndex)
+                return;
+
+            int emptySpaceLength = userText.Length - userText.TrimStart().Length;
+            string emptySpace = ConvertTabsToSpaces(userText.Substring(0, emptySpaceLength));
+            string editedUserText = emptySpace + userText.TrimStart();
+            if (isTextInsertion){
+                editedUserText = emptySpace + line.Substring(0, start);
+            }
+            string remainder = line.Substring(start);
+            TextBlock textBlock = new TextBlock();
+            textBlock.Inlines.Add(item: new Run(editedUserText) { Foreground = transparentBrush });
+            textBlock.Inlines.Add(item: new Run(remainder) { Foreground = greyBrush });
+
+            stackPanel.Children.Add(textBlock);
+        }
+
+        void AddInsertionTextBlock(int start, int end, string line){
+            if (line.Length <= suggestionIndex)
+                return;
+
+            TextBlock textBlock = new TextBlock();
+            string remainder = line.Substring(start, end - start);
+            GetTagger().UpdateAdornment(CreateTextBox(remainder, greyBrush));
+        }
+
 
         //Updates the grey text
         public void UpdateAdornment(IWpfTextView view, string userText, int suggestionStart){
             stackPanel.Children.Clear();
+            GetTagger().ClearAdornment();
             for (int i = suggestionStart; i < suggestion.Item2.Length; i++){
                 string line = suggestion.Item2[i];
 
-                TextBlock textBlock = new TextBlock();
-
                 if (i == 0){
-                    string emptySpace = ConvertTabsToSpaces(userText.Substring(0, userText.Length - userText.TrimStart().Length));
-                    string editedUserText = emptySpace + userText.TrimStart();
-                    textBlock.Inlines.Add(item: new Run(editedUserText) { Foreground = transparentBrush });
+                    int offset = line.Length - line.TrimStart().Length;
 
-                    if(line.Length > suggestionIndex){
-                        int offset = line.Length - line.TrimStart().Length;
-                        string remainder = line.Substring(suggestionIndex + offset);
-                        textBlock.Inlines.Add(item: new Run(remainder) { Foreground = greyBrush });
+                    if (isTextInsertion && suggestionIndex < userIndex){
+                        if(suggestionIndex > 0 && char.IsWhiteSpace(line[suggestionIndex - 1]) && !char.IsWhiteSpace(userText[userText.Length - insertionPoint - 1])){
+                            suggestionIndex--;
+                        }
+                        AddInsertionTextBlock(suggestionIndex + offset, userIndex, line);
+                        if (line.Length > userIndex + 1) {
+                            AddSuffixTextBlocks(userIndex + userEndingText.Trim().Length, line, userText);
+                        }
+                    }else{
+                        AddSuffixTextBlocks(userText.Length > 0 ? suggestionIndex + offset : 0, line, userText);
                     }
                 }else{
-                    textBlock.Inlines.Add(item: new Run(line));
-                    textBlock.Foreground = new SolidColorBrush(Colors.Gray);
+                    stackPanel.Children.Add(CreateTextBox(line, greyBrush));
                 }
-
-                textBlock.FontStyle = FontStyles.Normal;
-                textBlock.FontWeight = FontWeights.Normal;
-
-                stackPanel.Children.Add(textBlock);
             }
 
             this.adornmentLayer.RemoveAllAdornments();
@@ -217,21 +300,24 @@ namespace RefactAI{
             foreach (TextBlock block in stackPanel.Children){
                 FormatText(block);
             }
+            
+            GetTagger().FormatText(GetTextFormat());
+            if (stackPanel.Children.Count > 0){
+                // Clear the adornment layer of previous adornments
+                this.adornmentLayer.RemoveAllAdornments();
 
-            // Clear the adornment layer of previous adornments
-            this.adornmentLayer.RemoveAllAdornments();
+                ITextSnapshotLine snapshotLine = view.TextSnapshot.GetLineFromLineNumber(currentTextLineN);
+                var start = view.TextViewLines.GetCharacterBounds(snapshotLine.Start);
 
-            ITextSnapshotLine snapshotLine = view.TextSnapshot.GetLineFromLineNumber(currentTextLineN);
-            var start = view.TextViewLines.GetCharacterBounds(snapshotLine.Start);
+                var span = snapshotLine.Extent;
 
-            // Place the image in the top left hand corner of the line
-            Canvas.SetLeft(stackPanel, start.Left);
-            Canvas.SetTop(stackPanel, start.Top);
+                // Place the image in the top left hand corner of the line
+                Canvas.SetLeft(stackPanel, start.Left);
+                Canvas.SetTop(element: stackPanel, start.Top);
 
-            var span = snapshotLine.Extent;
-
-            // Add the image to the adornment layer and make it relative to the viewport
-            this.adornmentLayer.AddAdornment(AdornmentPositioningBehavior.TextRelative, span, null, stackPanel, null);
+                // Add the image to the adornment layer and make it relative to the viewport
+                this.adornmentLayer.AddAdornment(AdornmentPositioningBehavior.TextRelative, span, null, stackPanel, null);
+            }
         }
 
         //returns the number of times letter c appears in s
@@ -252,7 +338,7 @@ namespace RefactAI{
         }
 
         //Compares the two strings to see if a is a prefix of b ignoring whitespace
-        int CompareStrings(String a, String b){
+        Tuple<int,int> CompareStrings(String a, String b){
             int a_index = 0, b_index = 0;
             while(a_index < a.Length && b_index < b.Length){
                 char aChar = a[a_index];
@@ -273,17 +359,17 @@ namespace RefactAI{
                         continue;
                     }
 
-                    return -1;
+                    break;
                 }
             }
 
-            return a_index >= a.Length ? b_index : -1;
+            return new Tuple<int, int>(a_index, b_index);
         }
 
         //Check if the text in the editor is a substring of the the suggestion text 
         //If it matches return the line number of the suggestion text that matches the current line in the editor 
         //else return -1
-        int CheckSuggestion(ITextSnapshot newSnapshot, String suggestion, String line, int startLine){
+        int CheckSuggestion(String suggestion, String line){
             if (line.Length == 0){
                 return 0;
             }
@@ -295,8 +381,9 @@ namespace RefactAI{
             if (index > -1 && (firstLineBreak == -1 || endPos < firstLineBreak)){
                 return index == 0 ? line.Length : -1;
             }else{
-                int res = CompareStrings(line, suggestion);
-                return res >= 0 ? res : -1;
+                Tuple<int,int> res = CompareStrings(line, suggestion);
+                int endPoint = isTextInsertion ? line.Length - insertionPoint : line.Length;
+                return res.Item1 >=  endPoint ? res.Item2 : -1;
             }
         }
 
@@ -338,11 +425,11 @@ namespace RefactAI{
             //else
             //  clear suggestions
 
-            int suggestionIndex = CheckSuggestion(newSnapshot, suggestion.Item1, line, textLineN);
+            int suggestionIndex = CheckSuggestion( suggestion.Item1, line);
             if (suggestionIndex >= 0){
                 this.currentTextLineN = textLineN;
                 this.suggestionIndex = suggestionIndex;
-                ShowSuggestion(untrimLine, suggestion.Item2, 0);
+                ShowSuggestion(untrimLine, 0);
             }else{
                 ClearSuggestion();
             }
@@ -359,10 +446,10 @@ namespace RefactAI{
             String untrimLine = this.snapshot.GetLineFromLineNumber(currentTextLineN).GetText();
             String line = untrimLine.Trim();
 
-            int suggestionLineN = CheckSuggestion(this.snapshot, suggestion.Item1, line, currentTextLineN);
+            int suggestionLineN = CheckSuggestion( suggestion.Item1, line);
             if(suggestionLineN >= 0){
                 int diff = untrimLine.Length - untrimLine.TrimStart().Length;
-                string whitespace = untrimLine.Substring(0, diff);
+                string whitespace = String.IsNullOrWhiteSpace(untrimLine) ? "" : untrimLine.Substring(0, diff);
                 ReplaceText(whitespace + suggestion.Item1, currentTextLineN);
                 return true;
             }
@@ -382,15 +469,19 @@ namespace RefactAI{
         }
 
         //sets up the suggestion for display
-        void ShowSuggestion(String text, String[] suggestion, int suggestionLineStart){
+        void ShowSuggestion(String text,  int suggestionLineStart){
             UpdateAdornment(view, text, suggestionLineStart);
+
             showSuggestion = true;
             MarkDirty();
         }
 
         //removes the suggestion
         public void ClearSuggestion(){
-            if(!showSuggestion) return;
+            if (!showSuggestion) return;
+            InlineGreyTextTagger inlineTagger = GetTagger();
+            inlineTagger.ClearAdornment();
+            inlineTagger.MarkDirty();
             suggestion = null;
             adornmentLayer.RemoveAllAdornments();
             showSuggestion = false;
@@ -400,6 +491,7 @@ namespace RefactAI{
 
         //triggers refresh of the screen 
         void MarkDirty(){
+            GetTagger().MarkDirty();
             ITextSnapshot newSnapshot = buffer.CurrentSnapshot;
             this.snapshot = newSnapshot;
            
@@ -412,7 +504,7 @@ namespace RefactAI{
             var endLine = view.TextSnapshot.GetLineFromPosition(changeEnd);
 
             var span = new SnapshotSpan(startLine.Start, endLine.EndIncludingLineBreak).
-            TranslateTo(newSnapshot, SpanTrackingMode.EdgePositive);
+            TranslateTo(targetSnapshot: newSnapshot, SpanTrackingMode.EdgePositive);
 
             //lines we are marking dirty
             //currently all of them for simplicity 

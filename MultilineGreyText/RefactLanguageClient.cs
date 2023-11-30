@@ -221,7 +221,7 @@ namespace RefactAI{
             }
         }
 
-        public async Task<string> RefactCompletion(PropertyCollection props, String fileUri, int lineN, int character){
+        public async Task<string> RefactCompletion(PropertyCollection props, String fileUri, int lineN, int character, bool multiline){
             //Make sure lsp has finished loading
             if(this.Rpc == null){
                 return null;
@@ -236,7 +236,7 @@ namespace RefactAI{
                         position = new { line = lineN, character = character },
                     },
                     parameters = new { max_new_tokens = 50, temperature = 0.2f },
-                    multiline = true,
+                    multiline = multiline,
                     textDocument = new { uri = fileUri },
                     position = new{ line = lineN, character = character }
                 };
