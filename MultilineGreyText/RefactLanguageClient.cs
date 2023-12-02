@@ -23,6 +23,10 @@ using Community.VisualStudio.Toolkit;
 using System.Windows.Controls;
 using System.Windows;
 
+// VS uses LSP in the background but doesn't play nicely with custom LSP servers for
+// languages that already have a default LSP.
+
+
 namespace RefactAI{
 
     //the lsp client for refact
@@ -32,7 +36,7 @@ namespace RefactAI{
     [RunOnContext(RunningContext.RunOnHost)]
 
     public class RefactLanguageClient : ILanguageClient, ILanguageClientCustomMessage2, IDisposable{
-        //service provider is used to get the IVsServiceProvider which is needed for the status bar 
+        //service provider is used to get the IVsServiceProvider which is needed for the status bar
         [Import]
         internal SVsServiceProvider ServiceProvider { get; set; }
 
@@ -67,7 +71,7 @@ namespace RefactAI{
         //intialization options
         public object InitializationOptions => null;
 
-        //files to watch 
+        //files to watch
         public IEnumerable<string> FilesToWatch => null;
 
         //middle layer used to intercep messages to/from lsp
@@ -79,7 +83,7 @@ namespace RefactAI{
         //show notification on initialize failed setting
         public bool ShowNotificationOnInitializeFailed => true;
 
-        //files lsp is aware of 
+        //files lsp is aware of
         internal HashSet<String> files;
 
         //constructor
@@ -96,10 +100,10 @@ namespace RefactAI{
             }
         }
 
-        //sends file to lsp and adds it to known file set        
+        //sends file to lsp and adds it to known file set
         public async void AddFile(String filePath, String text){
 
-            //wait for the rpc 
+            //wait for the rpc
             while (Rpc == null) await Task.Delay(1);
 
             //dont send the file to the lsp if the lsp already knows about it
@@ -201,7 +205,7 @@ namespace RefactAI{
             return Task.CompletedTask;
         }
 
-        //used to set up custom messages 
+        //used to set up custom messages
         public Task AttachForCustomMessageAsync(JsonRpc rpc){
             this.Rpc = rpc;
             return Task.CompletedTask;
