@@ -81,10 +81,6 @@ namespace RefactAI{
             String line = untrim.TrimStart();
             int offset = untrim.Length - line.Length;
 
-   /*         if (caretPoint > untrim.Length){
-                
-                newSuggestion = (new string(' ', caretPoint - untrim.Length)) + newSuggestion;
-            }*/
             caretPoint = Math.Max(0, caretPoint - offset);
             
             String combineSuggestion = line + newSuggestion;
