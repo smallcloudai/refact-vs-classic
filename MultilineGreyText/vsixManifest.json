@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json.schemastore.org/vsix-publish",
+    "categories": [ "coding" ],
+    "identity": {
+        "internalName": "refactclassic"
+    },
+    "overview": "overview.md",
+    "priceCategory": "free",
+    "publisher": "smallcloud",
+    "private": false,
+    "qna": true,
+    "repo": "https://github.com/smallcloudai/refact-vs-classic"
+}

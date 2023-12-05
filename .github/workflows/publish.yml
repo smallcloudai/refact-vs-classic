@@ -1,4 +1,4 @@
-name: CI build
+name: Publish
 
 env:
   config: Release
@@ -7,14 +7,10 @@ env:
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
 on:
-  push:
-    branches: [main]
-  # Trigger the workflow on any pull request
-  pull_request:
   workflow_dispatch:
 
 jobs:
-  dist:
+  publish:
     strategy:
       matrix:
         include:
@@ -26,19 +22,28 @@ jobs:
           #   target: aarch64-pc-windows-msvc
           #   code-target: win32-arm64
           #   arch: arm64
+
     env:
       LLM_LS_TARGET: ${{ matrix.target }}
-
-    name: dist (${{ matrix.target }})
+    
+    name: Publish in marketplace (VSCE) (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
 
-    steps:
+    steps: 
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          submodules: true
           fetch-depth: ${{ env.FETCH_DEPTH }}
+      
+      - name: Set UUID
+        id: generate-uuid
+        uses: filipstefansson/uuid-action@v1
+
+      - name: Setup ID
+        shell: bash
+        run: |
+          sed -i 's\REPLACE_ID\${{ steps.generate-uuid.outputs.uuid }}\g' MultilineGreyText/source.extension.vsixmanifest
           
       - name: Download artifact
         id: download-artifact
@@ -50,7 +55,7 @@ jobs:
           branch: main 
           path: ${{ github.workspace }}/MultilineGreyText/Resources
           name: dist-${{ matrix.target }}
-      
+
       - name: Nerdbank.GitVersioning
         uses: aarnott/nbgv@v0.3
         id: nbgv
@@ -69,9 +74,21 @@ jobs:
       - name: MSBuild ${{ env.refactSolution }}
         run: |
           msbuild ${{ env.refactSolution }} /p:Configuration=${{ env.config }} /p:TargetVsixContainer=${{ env.vsixContainer }} /p:DeployExtension=False /verbosity:minimal
-        
 
-      - name: Upload VSIX artifact
+      - name: Publish release to marketplace
+        id: publish
+        uses: cezarypiatek/VsixPublisherAction@1.0
+        with:
+          # (Required) Personal access token to perform action on the VS Marketplace
+          personal-access-code: ${{ secrets.VSCE_PAT }}
+
+          # (Required) Path to the manifest used for the publish
+          publish-manifest-file: MultilineGreyText/vsixManifest.json
+
+          # (Optional) Path to an extension package
+          extension-file: ${{ env.vsixContainer }}
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}

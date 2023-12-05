@@ -129,7 +129,7 @@ namespace RefactAI{
             }
         }
 
-        //does lsp know about the file
+        //does lsp know about the file?
         public bool ContainsFile(String file){
             return files.Contains(file);
         }
@@ -176,7 +176,7 @@ namespace RefactAI{
             args += "--address-url " + (String.IsNullOrWhiteSpace(General.Instance.AddressURL) ? "Refact" : General.Instance.AddressURL) + " ";
             args += "--api-key " + (String.IsNullOrWhiteSpace(General.Instance.APIKey) ? "ZZZWWW" : General.Instance.APIKey) + " ";
 
-            return args + "--http-port 8001 --lsp-stdin-stdout 1 --logs-stderr";
+            return args + "--http-port 8001 --lsp-stdin-stdout 1";
         }
 
         //used to start loading lsp
@@ -260,7 +260,6 @@ namespace RefactAI{
                     textDocument = new { uri = fileUri },
                     position = new{ line = lineN, character = character }
                 };
-
                 ShowLoadingStatusBar();
 
                 var res = await this.Rpc.InvokeWithParameterObjectAsync<JToken>("refact/getCompletions", argObj2);
@@ -277,7 +276,6 @@ namespace RefactAI{
             }catch (Exception e){
                 Debug.Write("Error " + e.ToString());
                 ShowStatusBarError("Error: \n" + e.Message);
-
                 return null;
             }
         }

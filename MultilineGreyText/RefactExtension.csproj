@@ -81,9 +81,9 @@
     <Compile Include="RefactCompletionHandlerProvider.cs" />
     <Compile Include="RefactLanguageClient.cs" />
     <Compile Include="StatusBar.cs" />
+    <Compile Include="VisualTreeUtils.cs" />
     <Compile Include="TestTag.cs" />
     <Compile Include="RefactPackage.cs" />
-    <Compile Include="VisualTreeUtils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
@@ -93,6 +93,7 @@
     </None>
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
+      <Generator>VsixManifestGenerator</Generator>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -109,6 +110,16 @@
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="icon.png">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Community.VisualStudio.Toolkit.17">
