@@ -14,6 +14,14 @@ using Microsoft.VisualStudio.Threading;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.LanguageServer.Protocol;
+using Microsoft.VisualStudio.Shell.Interop;
+using static System.Net.Mime.MediaTypeNames;
+using System.Windows.Forms;
+using System.Windows.Media;
+using Microsoft.VisualStudio;
+using Community.VisualStudio.Toolkit;
+using System.Windows.Controls;
+using System.Windows;
 
 namespace RefactAI{
 
@@ -23,8 +31,14 @@ namespace RefactAI{
     [Export(typeof(ILanguageClient))]
     [RunOnContext(RunningContext.RunOnHost)]
 
-    public class RefactLanguageClient : ILanguageClient, ILanguageClientCustomMessage2{
+    public class RefactLanguageClient : ILanguageClient, ILanguageClientCustomMessage2, IDisposable{
+        //service provider is used to get the IVsServiceProvider which is needed for the status bar 
+        [Import]
+        internal SVsServiceProvider ServiceProvider { get; set; }
+
         private Connection c;
+        private Process serverProcess = null;
+        private StatusBar statusBar;
 
         //lsp instance
         internal static RefactLanguageClient Instance{
@@ -72,6 +86,7 @@ namespace RefactAI{
         public RefactLanguageClient(){
             Instance = this;
             files = new HashSet<string>();
+            statusBar = new StatusBar();
         }
 
         //gets/sets lsp configuration sections
@@ -110,10 +125,11 @@ namespace RefactAI{
                 await Rpc.NotifyWithParameterObjectAsync("textDocument/didChange", openParam);
             }catch (Exception e){
                 Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
+                ShowStatusBarError("Server Exception: \n" + e.Message);
             }
         }
 
-        //does lsp know about the file?
+        //does lsp know about the file
         public bool ContainsFile(String file){
             return files.Contains(file);
         }
@@ -168,6 +184,7 @@ namespace RefactAI{
             if (StartAsync != null){
                 loaded = true;
                 await StartAsync.InvokeAsync(this, EventArgs.Empty);
+                statusBar = new StatusBar();
             }
         }
 
@@ -199,6 +216,8 @@ namespace RefactAI{
                 FailureMessage = message,
             };
 
+            ShowStatusBarError(message);
+
             return Task.FromResult(failureContext);
         }
 
@@ -217,6 +236,7 @@ namespace RefactAI{
                     await Rpc.NotifyWithParameterObjectAsync("textDocument/didChange", changesParam);
                 }catch(Exception e){
                     Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
+                    ShowStatusBarError("Server Exception: \n" + e.Message);
                 }
             }
         }
@@ -240,7 +260,9 @@ namespace RefactAI{
                     textDocument = new { uri = fileUri },
                     position = new{ line = lineN, character = character }
                 };
-                
+
+                ShowLoadingStatusBar();
+
                 var res = await this.Rpc.InvokeWithParameterObjectAsync<JToken>("refact/getCompletions", argObj2);
 
                 //process results
@@ -249,10 +271,37 @@ namespace RefactAI{
                     suggestions.Add(s["code_completion"].ToString());
                 }
 
+                ShowDefaultStatusBar();
+
                 return suggestions[0];
             }catch (Exception e){
                 Debug.Write("Error " + e.ToString());
+                ShowStatusBarError("Error: \n" + e.Message);
+
                 return null;
+            }
+        }
+
+        async void ShowDefaultStatusBar(){
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            statusBar.ShowDefaultStatusBar();
+        }
+
+        async void ShowStatusBarError(String error){
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            statusBar.ShowStatusBarError(error);
+        }
+
+        async void ShowLoadingStatusBar(){
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            statusBar.ShowLoadingSymbol();
+        }
+
+        public void Dispose(){
+            if(serverProcess != null){
+                serverProcess.Kill();
+                serverProcess.WaitForExit();
+                serverProcess.Dispose();
             }
         }
 

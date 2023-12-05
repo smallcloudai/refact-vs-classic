@@ -41,8 +41,7 @@
       </Group>
     </Groups>
 
-    <!--Buttons section. -->
-    <!--This section defines the elements the user can interact with, like a menu command or a button
+    <!--Buttons section. -es the elements the user can interact with, like a menu command or a button
         or combo box in a toolbar. -->
     <Buttons>
       <!--To define a menu group you have to specify its ID, the parent menu and its display priority.
