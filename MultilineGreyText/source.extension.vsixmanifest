@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="codify.REPLACE_ID" Version="0.0.1" Language="en-US" Publisher="smallcloud" />
+        <Identity Id="refact.565c0987-99df-4b97-a332-9c26d2e5fd00" Version="0.0.1" Language="en-US" Publisher="smallcloud" />
         <DisplayName>Refact</DisplayName>
         <Description>Refact.ai: The AI Assistant for Code Writing and Refactoring</Description>
         <MoreInfo>https://github.com/smallcloudai/refact-vs-classic</MoreInfo>
