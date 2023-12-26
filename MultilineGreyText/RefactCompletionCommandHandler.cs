@@ -155,7 +155,7 @@ namespace RefactAI{
 
                             String pattern ="[\\s\\t\\n\\r" + escapedSymbols + "]*";
                             Match m = Regex.Match(afterCaret, pattern, RegexOptions.IgnoreCase);
-                            if(!m.Success)
+                            if(!(m.Success && m.Index == 0 && m.Length == afterCaret.Length))
                                 return;
                         }
 

@@ -18,7 +18,7 @@ namespace RefactAI
     internal class InlineTaggerProvider : IViewTaggerProvider
     {
         //create a single tagger for each buffer.
-        //the MultilineGreyTextTagger displays the grey text in the editor.
+        //the InlineGreyTextTagger displays grey text inserted between user text in the editor.
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
         {
             Func<ITagger<T>> sc = delegate () { return new InlineGreyTextTagger((IWpfTextView)textView) as ITagger<T>; };
