@@ -43,7 +43,7 @@ jobs:
       - name: Setup ID
         shell: bash
         run: |
-          sed -i 's\REPLACE_ID\${{ steps.generate-uuid.outputs.uuid }}\g' MultilineGreyText/source.extension.vsixmanifest
+          sed -i 's\565c0987-99df-4b97-a332-9c26d2e5fd00\${{ steps.generate-uuid.outputs.uuid }}\g' MultilineGreyText/source.extension.vsixmanifest
           
       - name: Download artifact
         id: download-artifact
