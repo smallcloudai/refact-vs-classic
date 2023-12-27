@@ -122,7 +122,7 @@ namespace RefactAI{
 
             //send message to lsp catch any communication errors
             try{
-                await Rpc.NotifyWithParameterObjectAsync("textDocument/didChange", openParam);
+                await Rpc.NotifyWithParameterObjectAsync("textDocument/didOpen", openParam);
             }catch (Exception e){
                 Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
                 ShowStatusBarError("Server Exception: \n" + e.Message);
@@ -136,6 +136,7 @@ namespace RefactAI{
 
         //activates the lsp using stdin/stdout to communicate with it
         public async Task<Connection> ActivateAsync(CancellationToken token){
+            files.Clear();
             ProcessStartInfo info = new ProcessStartInfo();
 
             info.FileName = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources", @"refact-lsp.exe");
