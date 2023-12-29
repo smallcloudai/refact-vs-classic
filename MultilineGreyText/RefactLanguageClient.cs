@@ -107,9 +107,6 @@ namespace RefactAI{
                 return;
             }
 
-            //add file to known file set
-            files.Add(filePath);
-
             //message to send to lsp
             var openParam = new DidOpenTextDocumentParams{
                 TextDocument = new TextDocumentItem{
@@ -123,6 +120,8 @@ namespace RefactAI{
             //send message to lsp catch any communication errors
             try{
                 await Rpc.NotifyWithParameterObjectAsync("textDocument/didOpen", openParam);
+                //add file to known file set
+                files.Add(filePath);
             }catch (Exception e){
                 Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
                 ShowStatusBarError("Server Exception: \n" + e.Message);
