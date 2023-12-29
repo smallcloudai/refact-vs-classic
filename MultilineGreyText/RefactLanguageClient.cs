@@ -248,7 +248,7 @@ namespace RefactAI{
                 return null;
             }
             if (!ContainsFile(fileUri)){
-                return;
+                return null;
             }
             //catching server errors
             try{
