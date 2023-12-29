@@ -247,7 +247,9 @@ namespace RefactAI{
             if(this.Rpc == null){
                 return null;
             }
-
+            if (!ContainsFile(fileUri)){
+                return;
+            }
             //catching server errors
             try{
                 //args to send for refact/getCompletions
