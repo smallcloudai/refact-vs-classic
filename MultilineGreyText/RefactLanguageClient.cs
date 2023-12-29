@@ -122,7 +122,7 @@ namespace RefactAI{
 
             //send message to lsp catch any communication errors
             try{
-                await Rpc.NotifyWithParameterObjectAsync("textDocument/didChange", openParam);
+                await Rpc.NotifyWithParameterObjectAsync("textDocument/didOpen", openParam);
             }catch (Exception e){
                 Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
                 ShowStatusBarError("Server Exception: \n" + e.Message);
@@ -136,6 +136,7 @@ namespace RefactAI{
 
         //activates the lsp using stdin/stdout to communicate with it
         public async Task<Connection> ActivateAsync(CancellationToken token){
+            files.Clear();
             ProcessStartInfo info = new ProcessStartInfo();
 
             info.FileName = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources", @"refact-lsp.exe");
@@ -176,7 +177,7 @@ namespace RefactAI{
             args += "--address-url " + (String.IsNullOrWhiteSpace(General.Instance.AddressURL) ? "Refact" : General.Instance.AddressURL) + " ";
             args += "--api-key " + (String.IsNullOrWhiteSpace(General.Instance.APIKey) ? "ZZZWWW" : General.Instance.APIKey) + " ";
 
-            return args + "--http-port 8001 --lsp-stdin-stdout 1";
+            return args + "--http-port 8001 --lsp-stdin-stdout 1 --logs-stderr";
         }
 
         //used to start loading lsp
@@ -246,7 +247,9 @@ namespace RefactAI{
             if(this.Rpc == null){
                 return null;
             }
-
+            if (!ContainsFile(fileUri)){
+                return null;
+            }
             //catching server errors
             try{
                 //args to send for refact/getCompletions
