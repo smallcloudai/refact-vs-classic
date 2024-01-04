@@ -163,7 +163,7 @@ namespace RefactAI{
             var snapshotLine = currentSnapshot.GetLineFromLineNumber(currentTextLineN);
 
             var height = view.LineHeight * (currentSuggestion.Item2.Length - 1);
-
+            
             if(currentTextLineN == 0 && currentSnapshot.Lines.Count() == 1 && String.IsNullOrEmpty(currentSnapshot.GetText())){
                 height += view.LineHeight;
             }
@@ -240,7 +240,6 @@ namespace RefactAI{
             string remainder = line.Substring(start, end - start);
             GetTagger().UpdateAdornment(CreateTextBox(remainder, greyBrush));
         }
-
 
         //Updates the grey text
         public void UpdateAdornment(IWpfTextView view, string userText, int suggestionStart){
@@ -459,8 +458,11 @@ namespace RefactAI{
 
             SnapshotSpan span = this.snapshot.GetLineFromLineNumber(lineN).Extent;
             ITextEdit edit = view.TextBuffer.CreateEdit();
-
-            edit.Replace(span, text);
+            if(span.Length == 0){
+                edit.Insert(span.Start.Position, text);
+            }else {
+                edit.Replace(span, text);
+            }
             edit.Apply();
         }
 

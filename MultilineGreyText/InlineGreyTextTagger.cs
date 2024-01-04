@@ -35,13 +35,19 @@ namespace RefactAI
         public void UpdateAdornment(UIElement text){
             ClearAdornment();
             stackPanel.Children.Add(text);
+            stackPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            stackPanel.UpdateLayout();
         }
 
         public void ClearAdornment(){
             stackPanel.Children.Clear();
+            stackPanel = new StackPanel();
         }
 
         public void FormatText(TextRunProperties props){
+            if(props == null){
+                return;
+            }
             foreach (TextBlock block in stackPanel.Children){
                 block.FontFamily = props.Typeface.FontFamily;
                 block.FontSize = props.FontRenderingEmSize;
@@ -68,7 +74,10 @@ namespace RefactAI
             }
 
             ITextSnapshot requestedSnapshot = spans[0].Snapshot;
-            stackPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double width = view.FormattedLineSource.ColumnWidth * ((stackPanel.Children[0] as TextBlock).Inlines.First() as Run).Text.Length;
+            stackPanel.Measure(new Size(width, double.PositiveInfinity));
+            stackPanel.MinWidth = width;
+            stackPanel.MaxWidth = width;
             var caretLine = view.Caret.ContainingTextViewLine;
             SnapshotPoint point = view.Caret.Position.BufferPosition.TranslateTo(requestedSnapshot, PointTrackingMode.Positive);
             var line = requestedSnapshot.GetLineFromPosition(point);
