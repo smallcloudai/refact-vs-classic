@@ -149,7 +149,7 @@ namespace RefactAI{
 
             //tells the lsp not to show the window
             //turning this off can be useful for debugging
-            //info.CreateNoWindow = true;
+            info.CreateNoWindow = true;
 
             //starts the lsp process
             Process process = new Process();
