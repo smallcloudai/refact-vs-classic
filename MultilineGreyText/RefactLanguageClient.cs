@@ -22,6 +22,8 @@ using Microsoft.VisualStudio;
 using Community.VisualStudio.Toolkit;
 using System.Windows.Controls;
 using System.Windows;
+using System.Linq;
+using System.Management;
 
 namespace RefactAI{
 
@@ -97,7 +99,7 @@ namespace RefactAI{
         }
 
         //sends file to lsp and adds it to known file set        
-        public async void AddFile(String filePath, String text){
+        public async Task AddFile(String filePath, String text){
 
             //wait for the rpc 
             while (Rpc == null) await Task.Delay(1);
@@ -123,7 +125,7 @@ namespace RefactAI{
                 //add file to known file set
                 files.Add(filePath);
             }catch (Exception e){
-                Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
+                Debug.Write("AddFile Server Exception " + e.ToString());
                 ShowStatusBarError("Server Exception: \n" + e.Message);
             }
         }
@@ -147,7 +149,7 @@ namespace RefactAI{
 
             //tells the lsp not to show the window
             //turning this off can be useful for debugging
-            info.CreateNoWindow = true;
+            //info.CreateNoWindow = true;
 
             //starts the lsp process
             Process process = new Process();
@@ -222,7 +224,7 @@ namespace RefactAI{
         }
 
         //manually sends change message to lsp
-        public async void InvokeTextDocumentDidChangeAsync(Uri fileURI, int version, TextDocumentContentChangeEvent[] contentChanges){
+        public async Task InvokeTextDocumentDidChangeAsync(Uri fileURI, int version, TextDocumentContentChangeEvent[] contentChanges){
             if (Rpc != null && ContainsFile(fileURI.ToString())){
                 var changesParam = new DidChangeTextDocumentParams{
                     ContentChanges = contentChanges,
@@ -262,20 +264,33 @@ namespace RefactAI{
                     textDocument = new { uri = fileUri },
                     position = new{ line = lineN, character = character }
                 };
+                await this.Rpc.DispatchCompletion;
                 ShowLoadingStatusBar();
-
+                
                 var res = await this.Rpc.InvokeWithParameterObjectAsync<JToken>("refact/getCompletions", argObj2);
+                ShowDefaultStatusBar();
 
+                var choices = res["choices"];
+
+                if (!(choices != null && choices.Count() > 0)){
+                    return null;
+                }
                 //process results
                 List<String> suggestions = new List<String>();
                 foreach (var s in res["choices"]){
-                    suggestions.Add(s["code_completion"].ToString());
+                    var code_completion = s["code_completion"];
+                    if (code_completion != null){
+                        suggestions.Add(code_completion.ToString());
+                    }
                 }
 
-                ShowDefaultStatusBar();
-
-                return suggestions[0];
-            }catch (Exception e){
+                if (suggestions.Count > 0){
+                    return suggestions[0];
+                }else{
+                    return null;
+                }
+            }
+            catch (Exception e){
                 Debug.Write("Error " + e.ToString());
                 ShowStatusBarError("Error: \n" + e.Message);
                 return null;
