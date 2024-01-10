@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.LanguageServer.Client;
+using Microsoft.VisualStudio.LanguageServer.Client;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Utilities;
 using StreamJsonRpc;
@@ -167,18 +167,17 @@ namespace RefactAI{
         //get command line args for the lsp
         String GetArgs(){
             String args = "";
-            if (General.Instance.TelemetryBasic){
-                args += "--basic-telemetry ";
-            }
+            args += "--basic-telemetry ";
 
             if (General.Instance.TelemetryCodeSnippets){
                 args += "--snippet-telemetry ";
             }
 
             args += "--address-url " + (String.IsNullOrWhiteSpace(General.Instance.AddressURL) ? "Refact" : General.Instance.AddressURL) + " ";
-            args += "--api-key " + (String.IsNullOrWhiteSpace(General.Instance.APIKey) ? "ZZZWWW" : General.Instance.APIKey) + " ";
+            args += "--api-key " + (String.IsNullOrWhiteSpace(General.Instance.APIKey) ? "vs-classic-no-key" : General.Instance.APIKey) + " ";
+            args += "--lsp-stdin-stdout 1";
 
-            return args + "--http-port 8001 --lsp-stdin-stdout 1 --logs-stderr";
+            return args;
         }
 
         //used to start loading lsp

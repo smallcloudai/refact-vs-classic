@@ -10,7 +10,7 @@ namespace RefactAI{
 
     //This uses visual studio toolkit to create an options page
     //The GeneralOptions xaml file controls the presentation of the page
-    internal partial class OptionsProvider { 
+    internal partial class OptionsProvider {
         // Register the options with these attributes in your package class:
         // [ProvideOptionPage(typeof(OptionsProvider.GeneralOptions), "My options", "General", 0, 0, true)]
         // [ProvideProfile(typeof(OptionsProvider.GeneralOptions), "My options", "General", 0, 0, true)]
@@ -58,17 +58,11 @@ namespace RefactAI{
         public bool PauseCompletion{ get; set; } = false;
 
         [Category("Refact Assistant")]
-        [DisplayName("Telemetry Basic")]
-        [Description("An informative description.")]
-        [DefaultValue(false)]
-        public bool TelemetryBasic{ get; set; } = false;
-
-        [Category("Refact Assistant")]
         [DisplayName("Telemetry Code Snippets")]
         [Description("An informative description.")]
         [DefaultValue(false)]
         public bool TelemetryCodeSnippets{ get; set; } = false;
-        
+
         //enters a message into the log when the options are saved
         public General() : base(){
             Saved += delegate { VS.StatusBar.ShowMessageAsync("Options Saved").FireAndForget(); };
