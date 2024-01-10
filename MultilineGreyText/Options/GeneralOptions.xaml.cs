@@ -5,18 +5,17 @@ namespace RefactAI{
     /// <summary>
     /// Interaction logic for GeneralOptions.xaml
     /// </summary>
-    public partial class GeneralOptions : UserControl { 
+    public partial class GeneralOptions : UserControl {
 
         internal GeneralOptionPage generalOptionsPage;
 
-        public GeneralOptions() { 
+        public GeneralOptions() {
             InitializeComponent();
         }
 
         //Sets up all of the variables to display the current settings
         public void Initialize(){
             pPauseCompletion.IsChecked = General.Instance.PauseCompletion;
-            pTelemetryBasic.IsChecked = General.Instance.TelemetryBasic;
             pTelemetryCodeSnippets.IsChecked = General.Instance.TelemetryCodeSnippets;
 
             AddressURL.Text = General.Instance.AddressURL;
@@ -37,18 +36,6 @@ namespace RefactAI{
         //pause completion checkbox unchecked
         private void pPauseCompletion_Unchecked(object sender, System.Windows.RoutedEventArgs e){
             General.Instance.PauseCompletion = (bool)pPauseCompletion.IsChecked;
-            General.Instance.Save();
-        }
-
-        //telemetry checked
-        private void pTelemetryBasic_Checked(object sender, System.Windows.RoutedEventArgs e){
-            General.Instance.TelemetryBasic = (bool)pTelemetryBasic.IsChecked;
-            General.Instance.Save();
-        }
-
-        //telemetry unchecked
-        private void pTelemetryBasic_Unchecked(object sender, System.Windows.RoutedEventArgs e){
-            General.Instance.TelemetryBasic = (bool)pTelemetryBasic.IsChecked;
             General.Instance.Save();
         }
 
