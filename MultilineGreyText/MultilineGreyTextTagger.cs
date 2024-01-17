@@ -82,19 +82,25 @@ namespace RefactAI{
             int offset = untrim.Length - line.Length;
 
             caretPoint = Math.Max(0, caretPoint - offset);
-            
-            String combineSuggestion = line + newSuggestion;
-            if (line.Length - caretPoint > 0){
-                String currentText = line.Substring(0, caretPoint);
-                combineSuggestion = currentText + newSuggestion;
-                userEndingText = line.TrimEnd().Substring(caretPoint);                
-                var userIndex = newSuggestion.IndexOf(userEndingText);
-                if(userIndex < 0){
-                    return;
-                }
-                userIndex += currentText.Length;
 
-                this.userIndex = userIndex;
+            String currentText = line.Substring(0, caretPoint);
+            String combineSuggestion = currentText + newSuggestion;
+
+            if (line.Length - caretPoint > 0){
+
+                userEndingText = line.Substring(caretPoint).TrimEnd();
+                if (String.IsNullOrEmpty(userEndingText)){
+
+                }else{
+                    var userIndex = newSuggestion.IndexOf(userEndingText);
+                    if (userIndex < 0)
+                    {
+                        return;
+                    }
+                    userIndex += currentText.Length;
+                    this.userIndex = userIndex;
+                }
+
                 isTextInsertion = true;
                 insertionPoint = line.Length - caretPoint;
             }else{
@@ -455,15 +461,16 @@ namespace RefactAI{
         //replaces text in the editor
         void ReplaceText(string text, int lineN){
             ClearSuggestion();
-
             SnapshotSpan span = this.snapshot.GetLineFromLineNumber(lineN).Extent;
-            ITextEdit edit = view.TextBuffer.CreateEdit();
-            if(span.Length == 0){
-                edit.Insert(span.Start.Position, text);
-            }else {
-                edit.Replace(span, text);
+            ITextEdit edit = view.BufferGraph.TopBuffer.CreateEdit();
+            var spanLength = span.Length;
+            edit.Replace(span, text);
+            var newSnapshot = edit.Apply();
+
+            if(spanLength == 0 && text.Length > 0){
+                view.Caret.MoveToPreviousCaretPosition();
+                view.Caret.MoveToNextCaretPosition();
             }
-            edit.Apply();
         }
 
         //sets up the suggestion for display

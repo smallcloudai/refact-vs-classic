@@ -152,12 +152,12 @@ namespace RefactAI{
             info.CreateNoWindow = true;
 
             //starts the lsp process
-            Process process = new Process();
-            process.StartInfo = info;
+            serverProcess = new Process();
+            serverProcess.StartInfo = info;
 
-            if (process.Start()){
+            if (serverProcess.Start()){
                 //returns the connection for future use
-                this.c = new Connection(process.StandardOutput.BaseStream, process.StandardInput.BaseStream);
+                this.c = new Connection(serverProcess.StandardOutput.BaseStream, serverProcess.StandardInput.BaseStream);
                 return c;
             }
 
@@ -185,7 +185,6 @@ namespace RefactAI{
             if (StartAsync != null){
                 loaded = true;
                 await StartAsync.InvokeAsync(this, EventArgs.Empty);
-                statusBar = new StatusBar();
             }
         }
 
@@ -298,24 +297,37 @@ namespace RefactAI{
 
         async void ShowDefaultStatusBar(){
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (!statusBar.IsInitialized()){
+                statusBar.InitStatusBar();
+            }
             statusBar.ShowDefaultStatusBar();
         }
 
         async void ShowStatusBarError(String error){
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (!statusBar.IsInitialized()){
+                statusBar.InitStatusBar();
+            }
             statusBar.ShowStatusBarError(error);
         }
 
         async void ShowLoadingStatusBar(){
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (!statusBar.IsInitialized()){
+                statusBar.InitStatusBar();
+            }
             statusBar.ShowLoadingSymbol();
         }
 
         public void Dispose(){
             if(serverProcess != null){
-                serverProcess.Kill();
-                serverProcess.WaitForExit();
-                serverProcess.Dispose();
+                try{
+                    serverProcess.Kill();
+                    serverProcess.WaitForExit();
+                    serverProcess.Dispose();
+                }catch(Exception e){
+                    Debug.Write("Dispose" + e.ToString());
+                }
             }
         }
 
