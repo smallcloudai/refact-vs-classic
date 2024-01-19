@@ -82,14 +82,14 @@ namespace RefactAI{
             int offset = untrim.Length - line.Length;
 
             caretPoint = Math.Max(0, caretPoint - offset);
-            
+
             String combineSuggestion = line + newSuggestion;
             if (line.Length - caretPoint > 0){
                 String currentText = line.Substring(0, caretPoint);
                 combineSuggestion = currentText + newSuggestion;
-                userEndingText = line.TrimEnd().Substring(caretPoint);                
+                userEndingText = line.Substring(caretPoint).TrimEnd();
                 var userIndex = newSuggestion.IndexOf(userEndingText);
-                if(userIndex < 0){
+                if (userIndex < 0){
                     return;
                 }
                 userIndex += currentText.Length;
@@ -163,7 +163,7 @@ namespace RefactAI{
             var snapshotLine = currentSnapshot.GetLineFromLineNumber(currentTextLineN);
 
             var height = view.LineHeight * (currentSuggestion.Item2.Length - 1);
-
+            
             if(currentTextLineN == 0 && currentSnapshot.Lines.Count() == 1 && String.IsNullOrEmpty(currentSnapshot.GetText())){
                 height += view.LineHeight;
             }
@@ -240,7 +240,6 @@ namespace RefactAI{
             string remainder = line.Substring(start, end - start);
             GetTagger().UpdateAdornment(CreateTextBox(remainder, greyBrush));
         }
-
 
         //Updates the grey text
         public void UpdateAdornment(IWpfTextView view, string userText, int suggestionStart){
@@ -456,12 +455,16 @@ namespace RefactAI{
         //replaces text in the editor
         void ReplaceText(string text, int lineN){
             ClearSuggestion();
-
             SnapshotSpan span = this.snapshot.GetLineFromLineNumber(lineN).Extent;
-            ITextEdit edit = view.TextBuffer.CreateEdit();
-
+            ITextEdit edit = view.BufferGraph.TopBuffer.CreateEdit();
+            var spanLength = span.Length;
             edit.Replace(span, text);
-            edit.Apply();
+            var newSnapshot = edit.Apply();
+
+            if(spanLength == 0 && text.Length > 0){
+                view.Caret.MoveToPreviousCaretPosition();
+                view.Caret.MoveToNextCaretPosition();
+            }
         }
 
         //sets up the suggestion for display

@@ -15,19 +15,27 @@ namespace RefactAI
         Brush whiteBrush;
         Brush errorBrush;
         Brush transparentBrush;
+        bool isInitialized = false;
 
         public StatusBar(){
             stack = new StackPanel();
             stack.Width = 75.0;
             stack.Orientation = Orientation.Horizontal;
+            ShowDefaultStatusBar();
+        }
+
+        public bool IsInitialized(){
+            return isInitialized;
+        }
+
+        public void InitStatusBar(){
+            isInitialized = true;
             panel = VisualTreeUtils.FindChild(Application.Current.MainWindow, childName: "StatusBarPanel") as Panel;
             whiteBrush = new SolidColorBrush(Colors.White);
             errorBrush = new SolidColorBrush(Colors.Red);
             transparentBrush = new SolidColorBrush(Colors.Transparent);
-            panel.Children.Add(stack);
-            ShowDefaultStatusBar();
+            panel.Children.Insert(3, stack);
         }
-
         public void ShowDefaultStatusBar(){
             stack.Children.Clear();
             stack.Background = transparentBrush;

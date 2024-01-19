@@ -45,6 +45,7 @@ namespace RefactAI{
         private int version = 0;
 
         private bool hasCompletionUpdated = false;
+        private Task<string> completionTask = null;
 
         //The command Handler processes keyboard input.
         internal RefactCompletionCommandHandler(IVsTextView textViewAdapter, ITextView textView, RefactCompletionHandlerProvider provider){
@@ -79,12 +80,22 @@ namespace RefactAI{
         }
 
         //Adds file to LSP
-        void ConnectFileToLSP(){
+        async Task ConnectFileToLSP(){
             if (!client.ContainsFile(filePath)){
-                client.AddFile(filePath, doc.TextBuffer.CurrentSnapshot.GetText());
-
-                //listen for changes
-                ((ITextBuffer2)doc.TextBuffer).ChangedHighPriority += ChangeEvent;
+                await client.AddFile(filePath, doc.TextBuffer.CurrentSnapshot.GetText());
+            }else{
+                version++;
+                TextDocumentContentChangeEvent[] contentChanges = new TextDocumentContentChangeEvent[1];
+                var snapshot = doc.TextBuffer.CurrentSnapshot;
+                contentChanges[0] = new TextDocumentContentChangeEvent {
+                    Text = snapshot.GetText(),
+                    Range = new Range {
+                        Start = new Position(0, 0),
+                        End = new Position(snapshot.Lines.Count(), 0)
+                    },
+                    RangeLength = snapshot.Lines.Count()
+                };
+                await this.client.InvokeTextDocumentDidChangeAsync(fileURI, version, contentChanges);
             }
         }
 
@@ -95,34 +106,6 @@ namespace RefactAI{
                 return props.GetProperty<MultilineGreyTextTagger>(key);
             }else{
                 return null;
-            }
-        }
-
-        //Send changes to LSP
-        private void ChangeEvent(object sender, TextContentChangedEventArgs args){
-            version++;
-            
-            //converts the changelist to be readable by LSP
-            TextDocumentContentChangeEvent[] contentChanges = args.Changes.Reverse().Select<ITextChange, TextDocumentContentChangeEvent>(change => {
-                int startLine, startColumn;
-                textViewAdapter.GetLineAndColumn(change.OldSpan.Start, out startLine, out startColumn);
-                int endLine, endColumn;
-                textViewAdapter.GetLineAndColumn(change.OldSpan.End, out endLine, out endColumn);
-                
-                return new TextDocumentContentChangeEvent{
-                    Text = change.NewText,
-                    Range = new Range{
-                        Start = new Position(startLine, startColumn),
-                        End = new Position(endLine, endColumn)
-                    },
-                    RangeLength = change.OldSpan.Length
-                };
-            }).ToArray();
-
-            //sends changes to LSP
-            if (contentChanges.Length > 0){
-                contentChanges[0].Text = m_textView.TextBuffer.CurrentSnapshot.GetText();
-                this.client.InvokeTextDocumentDidChangeAsync(fileURI, version, contentChanges);
             }
         }
 
@@ -137,7 +120,7 @@ namespace RefactAI{
         }
 
         //gets recommendations from LSP
-        public void GetLSPCompletions(){
+        public async void GetLSPCompletions(){
            if (!General.Instance.PauseCompletion){
                 SnapshotPoint? caretPoint = m_textView.Caret.Position.Point.GetPoint(textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
 
@@ -159,27 +142,27 @@ namespace RefactAI{
                                 return;
                         }
 
-                        if (!client.ContainsFile(filePath)){
-                            ConnectFileToLSP();
-                        }
+                        await ConnectFileToLSP();
 
                         hasCompletionUpdated = false;
                         bool multiline = !IsInline(lineN);
-                        var refactRes = client.RefactCompletion(m_textView.TextBuffer.Properties, filePath, lineN, multiline ? 0 : characterN, multiline);
-                        ShowRefactSuggestion(refactRes, new Tuple<int, int>(lineN, characterN));
+                        if(completionTask == null || completionTask.IsCompleted){
+                            completionTask = client.RefactCompletion(m_textView.TextBuffer.Properties, filePath, lineN, multiline ? 0 : characterN, multiline);
+                            var s = await completionTask;
+                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                            if (completionTask == null || completionTask.IsCompleted){
+                                ShowRefactSuggestion(s, lineN, characterN);
+                            }
+                        }
                     }
                 }
             }
         }
 
         //sends lsp reccomendations to grey text tagger to be dispalyed 
-        public async void ShowRefactSuggestion(Task<string> res, Object position){
-            var p = position as Tuple<int, int>;
-            int lineN = p.Item1;
-            int characterN = p.Item2;
+        public  void ShowRefactSuggestion(String s, int lineN, int characterN){
 
-            String s = await res;
-            if (res != null){
+            if (!string.IsNullOrEmpty(s)){
                 //the caret must be in a non-projection location 
                 SnapshotPoint? caretPoint = m_textView.Caret.Position.Point.GetPoint(textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
                 if (!caretPoint.HasValue){
@@ -265,10 +248,10 @@ namespace RefactAI{
 
             //gets lsp completions on added character or deletions
             if (!typedChar.Equals(char.MinValue) || commandID == (uint)VSConstants.VSStd2KCmdID.RETURN){
-                GetLSPCompletions();
+                _ = Task.Run(() => GetLSPCompletions());
                 handled = true;
             }else if (commandID == (uint)VSConstants.VSStd2KCmdID.BACKSPACE || commandID == (uint)VSConstants.VSStd2KCmdID.DELETE){
-                GetLSPCompletions();
+                _ = Task.Run(()=>GetLSPCompletions());
                 handled = true;
             }
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.LanguageServer.Client;
+using Microsoft.VisualStudio.LanguageServer.Client;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Utilities;
 using StreamJsonRpc;
@@ -22,10 +22,8 @@ using Microsoft.VisualStudio;
 using Community.VisualStudio.Toolkit;
 using System.Windows.Controls;
 using System.Windows;
-
-// VS uses LSP in the background but doesn't play nicely with custom LSP servers for
-// languages that already have a default LSP.
-
+using System.Linq;
+using System.Management;
 
 namespace RefactAI{
 
@@ -36,7 +34,7 @@ namespace RefactAI{
     [RunOnContext(RunningContext.RunOnHost)]
 
     public class RefactLanguageClient : ILanguageClient, ILanguageClientCustomMessage2, IDisposable{
-        //service provider is used to get the IVsServiceProvider which is needed for the status bar
+        //service provider is used to get the IVsServiceProvider which is needed for the status bar 
         [Import]
         internal SVsServiceProvider ServiceProvider { get; set; }
 
@@ -71,7 +69,7 @@ namespace RefactAI{
         //intialization options
         public object InitializationOptions => null;
 
-        //files to watch
+        //files to watch 
         public IEnumerable<string> FilesToWatch => null;
 
         //middle layer used to intercep messages to/from lsp
@@ -83,7 +81,7 @@ namespace RefactAI{
         //show notification on initialize failed setting
         public bool ShowNotificationOnInitializeFailed => true;
 
-        //files lsp is aware of
+        //files lsp is aware of 
         internal HashSet<String> files;
 
         //constructor
@@ -100,19 +98,16 @@ namespace RefactAI{
             }
         }
 
-        //sends file to lsp and adds it to known file set
-        public async void AddFile(String filePath, String text){
+        //sends file to lsp and adds it to known file set        
+        public async Task AddFile(String filePath, String text){
 
-            //wait for the rpc
+            //wait for the rpc 
             while (Rpc == null) await Task.Delay(1);
 
             //dont send the file to the lsp if the lsp already knows about it
             if (ContainsFile(filePath)){
                 return;
             }
-
-            //add file to known file set
-            files.Add(filePath);
 
             //message to send to lsp
             var openParam = new DidOpenTextDocumentParams{
@@ -127,8 +122,10 @@ namespace RefactAI{
             //send message to lsp catch any communication errors
             try{
                 await Rpc.NotifyWithParameterObjectAsync("textDocument/didOpen", openParam);
+                //add file to known file set
+                files.Add(filePath);
             }catch (Exception e){
-                Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
+                Debug.Write("AddFile Server Exception " + e.ToString());
                 ShowStatusBarError("Server Exception: \n" + e.Message);
             }
         }
@@ -155,12 +152,12 @@ namespace RefactAI{
             info.CreateNoWindow = true;
 
             //starts the lsp process
-            Process process = new Process();
-            process.StartInfo = info;
+            serverProcess = new Process();
+            serverProcess.StartInfo = info;
 
-            if (process.Start()){
+            if (serverProcess.Start()){
                 //returns the connection for future use
-                this.c = new Connection(process.StandardOutput.BaseStream, process.StandardInput.BaseStream);
+                this.c = new Connection(serverProcess.StandardOutput.BaseStream, serverProcess.StandardInput.BaseStream);
                 return c;
             }
 
@@ -188,7 +185,6 @@ namespace RefactAI{
             if (StartAsync != null){
                 loaded = true;
                 await StartAsync.InvokeAsync(this, EventArgs.Empty);
-                statusBar = new StatusBar();
             }
         }
 
@@ -204,7 +200,7 @@ namespace RefactAI{
             return Task.CompletedTask;
         }
 
-        //used to set up custom messages
+        //used to set up custom messages 
         public Task AttachForCustomMessageAsync(JsonRpc rpc){
             this.Rpc = rpc;
             return Task.CompletedTask;
@@ -226,7 +222,7 @@ namespace RefactAI{
         }
 
         //manually sends change message to lsp
-        public async void InvokeTextDocumentDidChangeAsync(Uri fileURI, int version, TextDocumentContentChangeEvent[] contentChanges){
+        public async Task InvokeTextDocumentDidChangeAsync(Uri fileURI, int version, TextDocumentContentChangeEvent[] contentChanges){
             if (Rpc != null && ContainsFile(fileURI.ToString())){
                 var changesParam = new DidChangeTextDocumentParams{
                     ContentChanges = contentChanges,
@@ -266,20 +262,33 @@ namespace RefactAI{
                     textDocument = new { uri = fileUri },
                     position = new{ line = lineN, character = character }
                 };
+                await this.Rpc.DispatchCompletion;
                 ShowLoadingStatusBar();
-
+                
                 var res = await this.Rpc.InvokeWithParameterObjectAsync<JToken>("refact/getCompletions", argObj2);
+                ShowDefaultStatusBar();
 
+                var choices = res["choices"];
+
+                if (!(choices != null && choices.Count() > 0)){
+                    return null;
+                }
                 //process results
                 List<String> suggestions = new List<String>();
                 foreach (var s in res["choices"]){
-                    suggestions.Add(s["code_completion"].ToString());
+                    var code_completion = s["code_completion"];
+                    if (code_completion != null){
+                        suggestions.Add(code_completion.ToString());
+                    }
                 }
 
-                ShowDefaultStatusBar();
-
-                return suggestions[0];
-            }catch (Exception e){
+                if (suggestions.Count > 0){
+                    return suggestions[0];
+                }else{
+                    return null;
+                }
+            }
+            catch (Exception e){
                 Debug.Write("Error " + e.ToString());
                 ShowStatusBarError("Error: \n" + e.Message);
                 return null;
@@ -288,24 +297,37 @@ namespace RefactAI{
 
         async void ShowDefaultStatusBar(){
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (!statusBar.IsInitialized()){
+                statusBar.InitStatusBar();
+            }
             statusBar.ShowDefaultStatusBar();
         }
 
         async void ShowStatusBarError(String error){
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (!statusBar.IsInitialized()){
+                statusBar.InitStatusBar();
+            }
             statusBar.ShowStatusBarError(error);
         }
 
         async void ShowLoadingStatusBar(){
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (!statusBar.IsInitialized()){
+                statusBar.InitStatusBar();
+            }
             statusBar.ShowLoadingSymbol();
         }
 
         public void Dispose(){
             if(serverProcess != null){
-                serverProcess.Kill();
-                serverProcess.WaitForExit();
-                serverProcess.Dispose();
+                try{
+                    serverProcess.Kill();
+                    serverProcess.WaitForExit();
+                    serverProcess.Dispose();
+                }catch(Exception e){
+                    Debug.Write("Dispose" + e.ToString());
+                }
             }
         }
 
