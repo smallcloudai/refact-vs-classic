@@ -83,24 +83,18 @@ namespace RefactAI{
 
             caretPoint = Math.Max(0, caretPoint - offset);
 
-            String currentText = line.Substring(0, caretPoint);
-            String combineSuggestion = currentText + newSuggestion;
-
+            String combineSuggestion = line + newSuggestion;
             if (line.Length - caretPoint > 0){
-
+                String currentText = line.Substring(0, caretPoint);
+                combineSuggestion = currentText + newSuggestion;
                 userEndingText = line.Substring(caretPoint).TrimEnd();
-                if (String.IsNullOrEmpty(userEndingText)){
-
-                }else{
-                    var userIndex = newSuggestion.IndexOf(userEndingText);
-                    if (userIndex < 0)
-                    {
-                        return;
-                    }
-                    userIndex += currentText.Length;
-                    this.userIndex = userIndex;
+                var userIndex = newSuggestion.IndexOf(userEndingText);
+                if (userIndex < 0){
+                    return;
                 }
+                userIndex += currentText.Length;
 
+                this.userIndex = userIndex;
                 isTextInsertion = true;
                 insertionPoint = line.Length - caretPoint;
             }else{
