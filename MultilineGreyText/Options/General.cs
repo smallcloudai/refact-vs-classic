@@ -5,6 +5,7 @@ using System.Globalization;
 using Community.VisualStudio.Toolkit;
 using Microsoft.VisualStudio.Shell;
 using System.Runtime.InteropServices;
+using OutlineRegionTest.Properties;
 
 namespace RefactAI{
 
@@ -63,9 +64,23 @@ namespace RefactAI{
         [DefaultValue(false)]
         public bool TelemetryCodeSnippets{ get; set; } = false;
 
-        //enters a message into the log when the options are saved
+        [Category("Refact Assistant")]
+        [DisplayName("Insecure SSL")]
+        [Description("An informative description.")]
+        [DefaultValue(false)]
+        public bool InsecureSSL { get; set; } = false;
+
+        // Event handler to be invoked when settings are saved
+        private void OnSettingsSaved(General options)
+        {
+            VS.StatusBar.ShowMessageAsync("Options Saved").FireAndForget();
+            OnSettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        // Event to notify when settings are changed
+        public static event EventHandler OnSettingsChanged;
         public General() : base(){
-            Saved += delegate { VS.StatusBar.ShowMessageAsync("Options Saved").FireAndForget(); };
+            Saved += OnSettingsSaved;
         }
     }
 }

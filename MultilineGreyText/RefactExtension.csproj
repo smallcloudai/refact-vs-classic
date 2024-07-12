@@ -54,6 +54,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="TriggerCompletionCommand.cs" />
     <Compile Include="InlineTaggerProvider.cs" />
     <Compile Include="InlineGreyTextTagger.cs" />
     <Compile Include="Options\GeneralOptions.xaml.cs">

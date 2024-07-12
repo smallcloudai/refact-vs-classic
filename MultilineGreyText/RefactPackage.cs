@@ -36,6 +36,7 @@ namespace RefactAI{
         /// VSPackage1 GUID string.
         /// </summary>
         public const string PackageGuidString = "6f370a16-644a-450c-8e52-e2b92644822b";
+        public static readonly Guid CommandSet = new Guid("6f370a16-644a-450c-8e52-e2b92644822b");
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RefactPackage"/> class.
@@ -59,6 +60,7 @@ namespace RefactAI{
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress){
             await this.RegisterCommandsAsync();
             await RefactAI.PauseRefactCommand.InitializeAsync(this);
+            await RefactAI.TriggerCompletionCommand.InitializeAsync(this);
         }
 
         #endregion
