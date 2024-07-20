@@ -73,7 +73,6 @@ namespace RefactAI{
         // Event handler to be invoked when settings are saved
         private void OnSettingsSaved(General options)
         {
-            VS.StatusBar.ShowMessageAsync("Options Saved").FireAndForget();
             OnSettingsChanged?.Invoke(this, EventArgs.Empty);
         }
 

@@ -96,6 +96,7 @@ namespace RefactAI
             Instance = this;
             files = new HashSet<string>();
             statusBar = new StatusBar();
+            ShowDefaultStatusBar();
 
             General.OnSettingsChanged += ReloadLanguageClient;
         }
@@ -108,10 +109,10 @@ namespace RefactAI
                 var connection = await ActivateAsync(CancellationToken.None);
                 // Rpc = new JsonRpc(connection.Input, connection.Output);
 
-                VS.StatusBar.ShowMessageAsync("Restarting Refact").FireAndForget();
-                await OnLoadedAsync();
+                VS.StatusBar.ShowMessageAsync("Options Updated").FireAndForget();
+                 await OnLoadedAsync();
 
-                VS.StatusBar.ShowMessageAsync("Options updated").FireAndForget();
+                VS.StatusBar.ShowMessageAsync("Ready").FireAndForget();
             }
             catch (Exception ex)
             {
@@ -204,8 +205,6 @@ namespace RefactAI
             }
 
             throw new InvalidOperationException("Failed to start language server process.");
-
-            return null;
         }
 
         // get extension version

@@ -1,6 +1,7 @@
 ﻿using Community.VisualStudio.Toolkit;
 using Microsoft.VisualStudio.Shell;
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -36,7 +37,6 @@ namespace RefactAI{
         /// VSPackage1 GUID string.
         /// </summary>
         public const string PackageGuidString = "6f370a16-644a-450c-8e52-e2b92644822b";
-        public static readonly Guid CommandSet = new Guid("6f370a16-644a-450c-8e52-e2b92644822b");
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RefactPackage"/> class.
@@ -58,9 +58,11 @@ namespace RefactAI{
         /// <param name="progress">A provider for progress updates.</param>
         /// <returns>A task representing the async work of package initialization, or an already completed task if there is none. Do not return null from this method.</returns>
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress){
+            Debug.Write("Initialzing the extension!");
             await this.RegisterCommandsAsync();
-            await RefactAI.PauseRefactCommand.InitializeAsync(this);
-            await RefactAI.TriggerCompletionCommand.InitializeAsync(this);
+
+            await PauseRefactCommand.InitializeAsync(this);
+            await TriggerCompletionCommand.InitializeAsync(this);
         }
 
         #endregion

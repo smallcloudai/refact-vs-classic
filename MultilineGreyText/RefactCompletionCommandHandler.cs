@@ -137,8 +137,9 @@ namespace RefactAI{
         }
 
         //gets recommendations from LSP
-        public async void GetLSPCompletions(){
-           if (!General.Instance.PauseCompletion){
+        public async void GetLSPCompletions()
+        {
+            if (!General.Instance.PauseCompletion){
                 SnapshotPoint? caretPoint = m_textView.Caret.Position.Point.GetPoint(textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
 
                 if (caretPoint.HasValue){
@@ -236,17 +237,10 @@ namespace RefactAI{
 
         //Key input handler
         public int Exec(ref Guid pguidCmdGroup, uint nCmdID, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut){
-            //let the other handlers handle automation functions
+            //let the other handlers handle automation
             if (VsShellUtilities.IsInAutomationFunction(m_provider.ServiceProvider)){
                 return m_nextCommandHandler.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
             }
-
-            if (pguidCmdGroup == RefactPackage.CommandSet && nCmdID == TriggerCompletionCommand.CommandId)
-            {
-                GetLSPCompletions();
-                return VSConstants.S_OK;
-            }
-
 
             //check for a commit character
             if (!hasCompletionUpdated && nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB){
