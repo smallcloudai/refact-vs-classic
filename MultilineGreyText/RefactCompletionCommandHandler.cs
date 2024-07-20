@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.LanguageServer.Protocol;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace RefactAI{
 
@@ -48,23 +49,33 @@ namespace RefactAI{
         private Task<string> completionTask = null;
 
         //The command Handler processes keyboard input.
-        internal RefactCompletionCommandHandler(IVsTextView textViewAdapter, ITextView textView, RefactCompletionHandlerProvider provider){
+        internal RefactCompletionCommandHandler(IVsTextView textViewAdapter, ITextView textView, RefactCompletionHandlerProvider provider)
+        {
             this.m_textView = textView;
             this.m_provider = provider;
             this.textViewAdapter = textViewAdapter;
-           
+
             var topBuffer = textView.BufferGraph.TopBuffer;
             var projectionBuffer = topBuffer as IProjectionBufferBase;
             var typeName = topBuffer.GetType();
             ITextBuffer textBuffer = projectionBuffer != null ? projectionBuffer.SourceBuffers[0] : topBuffer;
             provider.documentFactory.TryGetTextDocument(textBuffer, out doc);
-            this.fileURI = new Uri(doc.FilePath);
-            this.filePath = this.fileURI.ToString();
-           
+
+            if (doc != null && !string.IsNullOrEmpty(doc.FilePath))
+            {
+                this.fileURI = new Uri(doc.FilePath ?? throw new InvalidOperationException("Document file path is null."));
+                this.filePath = this.fileURI.ToString();
+            }
+            else
+            {
+                Debug.WriteLine("doc.FilePath is null or empty.");
+                this.filePath = string.Empty;
+            }
+
             LoadLsp(this.filePath, doc);
 
-            //add the command to the command chain
-            textViewAdapter.AddCommandFilter(this, out m_nextCommandHandler);            
+            // Add the command to the command chain
+            textViewAdapter.AddCommandFilter(this, out m_nextCommandHandler);
         }
 
         //Starts the refactlsp manually
@@ -81,6 +92,12 @@ namespace RefactAI{
 
         //Adds file to LSP
         async Task ConnectFileToLSP(){
+            if (fileURI == null)
+            {
+                // Handle the case where fileURI is not initialized
+                return;
+            }
+
             if (!client.ContainsFile(filePath)){
                 await client.AddFile(filePath, doc.TextBuffer.CurrentSnapshot.GetText());
             }else{
@@ -120,8 +137,9 @@ namespace RefactAI{
         }
 
         //gets recommendations from LSP
-        public async void GetLSPCompletions(){
-           if (!General.Instance.PauseCompletion){
+        public async void GetLSPCompletions()
+        {
+            if (!General.Instance.PauseCompletion){
                 SnapshotPoint? caretPoint = m_textView.Caret.Position.Point.GetPoint(textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
 
                 if (caretPoint.HasValue){
@@ -160,12 +178,14 @@ namespace RefactAI{
         }
 
         //sends lsp reccomendations to grey text tagger to be dispalyed 
-        public  void ShowRefactSuggestion(String s, int lineN, int characterN){
-
-            if (!string.IsNullOrEmpty(s)){
+        public void ShowRefactSuggestion(String s, int lineN, int characterN)
+        {
+            if (!string.IsNullOrEmpty(s))
+            {
                 //the caret must be in a non-projection location 
                 SnapshotPoint? caretPoint = m_textView.Caret.Position.Point.GetPoint(textBuffer => (!textBuffer.ContentType.IsOfType("projection")), PositionAffinity.Predecessor);
-                if (!caretPoint.HasValue){
+                if (!caretPoint.HasValue)
+                {
                     return;
                 }
 
@@ -174,16 +194,27 @@ namespace RefactAI{
                 int resCaretPos = textViewAdapter.GetCaretPos(out newLineN, out newCharacterN);
 
                 //double checks the cursor is still on the line the recommendation is for
-                if(resCaretPos != VSConstants.S_OK || (lineN != newLineN) || (characterN != newCharacterN)){
+                if (resCaretPos != VSConstants.S_OK || (lineN != newLineN) || (characterN != newCharacterN))
+                {
                     return;
                 }
 
                 var tagger = GetTagger();
-                if(tagger != null && s != null){
+                if (tagger != null && s != null)
+                {
                     tagger.SetSuggestion(s, IsInline(lineN), characterN);
+
+                    // Ensure cursor is positioned correctly for multiline completions
+                    if (s.Contains("\n"))
+                    {
+                        m_textView.Caret.MoveTo(new SnapshotPoint(m_textView.TextSnapshot, m_textView.TextSnapshot.Length));
+                        m_textView.Caret.EnsureVisible();
+                    }
                 }
             }
         }
+
+
 
         //Used to detect when the user interacts with the intellisense popup
         void CheckSuggestionUpdate(uint nCmdID){
@@ -206,7 +237,7 @@ namespace RefactAI{
 
         //Key input handler
         public int Exec(ref Guid pguidCmdGroup, uint nCmdID, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut){
-            //let the other handlers handle automation functions
+            //let the other handlers handle automation
             if (VsShellUtilities.IsInAutomationFunction(m_provider.ServiceProvider)){
                 return m_nextCommandHandler.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
             }
@@ -222,6 +253,9 @@ namespace RefactAI{
                         return VSConstants.S_OK;
                     }else{
                         tagger.ClearSuggestion();
+
+                        // start the suggestions process again to see if suggestion left in between due to token limit
+                        _ = Task.Run(() => GetLSPCompletions());
                     }
                 }
 

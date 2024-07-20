@@ -81,6 +81,7 @@
     <Compile Include="RefactCompletionHandlerProvider.cs" />
     <Compile Include="RefactLanguageClient.cs" />
     <Compile Include="StatusBar.cs" />
+    <Compile Include="TriggerCompletionCommand.cs" />
     <Compile Include="VisualTreeUtils.cs" />
     <Compile Include="TestTag.cs" />
     <Compile Include="RefactPackage.cs" />
@@ -155,6 +156,7 @@
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
     <Content Include="Resources\PauseRefactCommand.png" />
+    <Content Include="Resources\TriggerCompletionCommand.png" />
     <Content Include="Resources\VSCommandTable.ico" />
     <Content Include="Resources\VSPackage1.ico" />
   </ItemGroup>

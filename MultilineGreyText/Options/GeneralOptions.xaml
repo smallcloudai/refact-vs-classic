@@ -51,6 +51,11 @@
                 <CheckBox x:Name="pTelemetryCodeSnippets" Content="Send corrected code snippets."
                   IsThreeState="False"
                   Checked="pTelemetryCodeSnippets_Checked" Unchecked="pTelemetryCodeSnippets_Unchecked"/>
+
+                <TextBlock Margin="0 15 0 10">Refactai: <Bold>Insecure SSL</Bold></TextBlock>
+                <CheckBox x:Name="pInsecureSSL" Content="Allow insecure server connections when using SSL, ignore certificaiton verification issues."
+                  IsThreeState="False"
+                  Checked="pInsecureSSL_Checked" Unchecked="pInsecureSSL_Unchecked"/>
             </StackPanel>
 
         </Grid>

@@ -1,6 +1,7 @@
 ﻿using Community.VisualStudio.Toolkit;
 using Microsoft.VisualStudio.Shell;
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -57,8 +58,11 @@ namespace RefactAI{
         /// <param name="progress">A provider for progress updates.</param>
         /// <returns>A task representing the async work of package initialization, or an already completed task if there is none. Do not return null from this method.</returns>
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress){
+            Debug.Write("Initialzing the extension!");
             await this.RegisterCommandsAsync();
-            await RefactAI.PauseRefactCommand.InitializeAsync(this);
+
+            await PauseRefactCommand.InitializeAsync(this);
+            await TriggerCompletionCommand.InitializeAsync(this);
         }
 
         #endregion

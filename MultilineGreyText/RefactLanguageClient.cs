@@ -20,16 +20,15 @@ using System.Windows.Forms;
 using System.Windows.Media;
 using Microsoft.VisualStudio;
 using Community.VisualStudio.Toolkit;
-using System.Windows.Controls;
-using System.Windows;
 using System.Linq;
-using System.Management;
+using System.Runtime.InteropServices;
 
 // VS uses LSP in the background but doesn't play nicely with custom LSP servers for
 // languages that already have a default LSP.
 
 
-namespace RefactAI{
+namespace RefactAI
+{
 
     //the lsp client for refact
     //any means the lsp should start up for any file extension
@@ -37,7 +36,8 @@ namespace RefactAI{
     [Export(typeof(ILanguageClient))]
     [RunOnContext(RunningContext.RunOnHost)]
 
-    public class RefactLanguageClient : ILanguageClient, ILanguageClientCustomMessage2, IDisposable{
+    public class RefactLanguageClient : ILanguageClient, ILanguageClientCustomMessage2, IDisposable
+    {
         //service provider is used to get the IVsServiceProvider which is needed for the status bar 
         [Import]
         internal SVsServiceProvider ServiceProvider { get; set; }
@@ -47,13 +47,15 @@ namespace RefactAI{
         private StatusBar statusBar;
 
         //lsp instance
-        internal static RefactLanguageClient Instance{
+        internal static RefactLanguageClient Instance
+        {
             get;
             set;
         }
 
         //rpc for sending requests to the lsp
-        internal JsonRpc Rpc{
+        internal JsonRpc Rpc
+        {
             get;
             set;
         }
@@ -89,33 +91,62 @@ namespace RefactAI{
         internal HashSet<String> files;
 
         //constructor
-        public RefactLanguageClient(){
+        public RefactLanguageClient()
+        {
             Instance = this;
             files = new HashSet<string>();
             statusBar = new StatusBar();
+            ShowDefaultStatusBar();
+
+            General.OnSettingsChanged += ReloadLanguageClient;
+        }
+
+        async void ReloadLanguageClient(object sender, EventArgs e)
+        {
+            try
+            {
+                await StopServerAsync();
+                var connection = await ActivateAsync(CancellationToken.None);
+                // Rpc = new JsonRpc(connection.Input, connection.Output);
+
+                VS.StatusBar.ShowMessageAsync("Options Updated").FireAndForget();
+                 await OnLoadedAsync();
+
+                VS.StatusBar.ShowMessageAsync("Ready").FireAndForget();
+            }
+            catch (Exception ex)
+            {
+                ShowStatusBarError("Failed to reload language client: " + ex.Message);
+            }
         }
 
         //gets/sets lsp configuration sections
-        public IEnumerable<string> ConfigurationSections{
-            get{
+        public IEnumerable<string> ConfigurationSections
+        {
+            get
+            {
                 yield return "";
             }
         }
 
         //sends file to lsp and adds it to known file set        
-        public async Task AddFile(String filePath, String text){
+        public async Task AddFile(String filePath, String text)
+        {
 
             //wait for the rpc 
             while (Rpc == null) await Task.Delay(1);
 
             //dont send the file to the lsp if the lsp already knows about it
-            if (ContainsFile(filePath)){
+            if (ContainsFile(filePath))
+            {
                 return;
             }
 
             //message to send to lsp
-            var openParam = new DidOpenTextDocumentParams{
-                TextDocument = new TextDocumentItem{
+            var openParam = new DidOpenTextDocumentParams
+            {
+                TextDocument = new TextDocumentItem
+                {
                     Uri = new Uri(filePath),
                     LanguageId = filePath.Substring(filePath.LastIndexOf(".") + 1),
                     Version = 0,
@@ -124,24 +155,31 @@ namespace RefactAI{
             };
 
             //send message to lsp catch any communication errors
-            try{
+            try
+            {
                 await Rpc.NotifyWithParameterObjectAsync("textDocument/didOpen", openParam);
                 //add file to known file set
                 files.Add(filePath);
-            }catch (Exception e){
+            }
+            catch (Exception e)
+            {
                 Debug.Write("AddFile Server Exception " + e.ToString());
                 ShowStatusBarError("Server Exception: \n" + e.Message);
             }
         }
 
         //does lsp know about the file?
-        public bool ContainsFile(String file){
+        public bool ContainsFile(String file)
+        {
             return files.Contains(file);
         }
 
         //activates the lsp using stdin/stdout to communicate with it
-        public async Task<Connection> ActivateAsync(CancellationToken token){
+        public async Task<Connection> ActivateAsync(CancellationToken token)
+        {
             files.Clear();
+            await StopServerAsync();  // Ensure any existing server is stopped before starting a new one
+
             ProcessStartInfo info = new ProcessStartInfo();
 
             info.FileName = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources", @"refact-lsp.exe");
@@ -159,64 +197,105 @@ namespace RefactAI{
             serverProcess = new Process();
             serverProcess.StartInfo = info;
 
-            if (serverProcess.Start()){
+            if (serverProcess.Start())
+            {
                 //returns the connection for future use
                 this.c = new Connection(serverProcess.StandardOutput.BaseStream, serverProcess.StandardInput.BaseStream);
                 return c;
             }
 
-            return null;
+            throw new InvalidOperationException("Failed to start language server process.");
         }
 
+        // get extension version
+        public static string GetPluginVersion()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var versionAttribute = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
+            return versionAttribute?.Version ?? "unknown";
+        }
         //get command line args for the lsp
-        String GetArgs(){
+        String GetArgs()
+        {
             String args = "";
             args += "--basic-telemetry ";
 
-            if (General.Instance.TelemetryCodeSnippets){
+            if (General.Instance.TelemetryCodeSnippets)
+            {
                 args += "--snippet-telemetry ";
             }
 
+            if (General.Instance.InsecureSSL) {
+                args += "--insecure ";
+            }
             args += "--address-url " + (String.IsNullOrWhiteSpace(General.Instance.AddressURL) ? "Refact" : General.Instance.AddressURL) + " ";
             args += "--api-key " + (String.IsNullOrWhiteSpace(General.Instance.APIKey) ? "vs-classic-no-key" : General.Instance.APIKey) + " ";
+            args += "--enduser-client-version refact-" + GetPluginVersion() +" /vscode-2022 ";
             args += "--lsp-stdin-stdout 1";
 
             return args;
         }
 
         //used to start loading lsp
-        public async Task OnLoadedAsync(){
-            if (StartAsync != null){
+        public async Task OnLoadedAsync()
+        {
+            if (StartAsync != null)
+            {
                 loaded = true;
                 await StartAsync.InvokeAsync(this, EventArgs.Empty);
             }
         }
 
         //stops the lsp
-        public async Task StopServerAsync(){
-            if (StopAsync != null){
+        public async Task StopServerAsync()
+        {
+            if (StopAsync != null)
+            {
                 await StopAsync.InvokeAsync(this, EventArgs.Empty);
+            }
+
+            if (serverProcess != null)
+            {
+                try
+                {
+                    serverProcess.Kill();
+                    serverProcess.WaitForExit();
+                }
+                catch (Exception e)
+                {
+                    Debug.Write("StopServerAsync Exception " + e);
+                }
+                finally
+                {
+                    serverProcess.Dispose();
+                    serverProcess = null;
+                }
             }
         }
 
+
         //returns the completed task when the lsp has finished loading
-        public Task OnServerInitializedAsync(){
+        public Task OnServerInitializedAsync()
+        {
             return Task.CompletedTask;
         }
 
         //used to set up custom messages 
-        public Task AttachForCustomMessageAsync(JsonRpc rpc){
+        public Task AttachForCustomMessageAsync(JsonRpc rpc)
+        {
             this.Rpc = rpc;
             return Task.CompletedTask;
         }
 
         //server initialize failed
-        public Task<InitializationFailureContext> OnServerInitializeFailedAsync(ILanguageClientInitializationInfo initializationState){
+        public Task<InitializationFailureContext> OnServerInitializeFailedAsync(ILanguageClientInitializationInfo initializationState)
+        {
             string message = "Oh no! Refact Language Client failed to activate, now we can't test LSP! :(";
             string exception = initializationState.InitializationException?.ToString() ?? string.Empty;
             message = $"{message}\n {exception}";
 
-            var failureContext = new InitializationFailureContext(){
+            var failureContext = new InitializationFailureContext()
+            {
                 FailureMessage = message,
             };
 
@@ -226,128 +305,170 @@ namespace RefactAI{
         }
 
         //manually sends change message to lsp
-        public async Task InvokeTextDocumentDidChangeAsync(Uri fileURI, int version, TextDocumentContentChangeEvent[] contentChanges){
-            if (Rpc != null && ContainsFile(fileURI.ToString())){
-                var changesParam = new DidChangeTextDocumentParams{
+        public async Task InvokeTextDocumentDidChangeAsync(Uri fileURI, int version, TextDocumentContentChangeEvent[] contentChanges)
+        {
+            if (Rpc != null && ContainsFile(fileURI.ToString()))
+            {
+                var changesParam = new DidChangeTextDocumentParams
+                {
                     ContentChanges = contentChanges,
-                    TextDocument = new VersionedTextDocumentIdentifier{
+                    TextDocument = new VersionedTextDocumentIdentifier
+                    {
                         Version = version,
                         Uri = fileURI,
                     }
                 };
 
-                try{
+                try
+                {
                     await Rpc.NotifyWithParameterObjectAsync("textDocument/didChange", changesParam);
-                }catch(Exception e){
+                }
+                catch (Exception e)
+                {
                     Debug.Write("InvokeTextDocumentDidChangeAsync Server Exception " + e.ToString());
                     ShowStatusBarError("Server Exception: \n" + e.Message);
                 }
             }
         }
 
-        public async Task<string> RefactCompletion(PropertyCollection props, String fileUri, int lineN, int character, bool multiline){
+        public async Task<string> RefactCompletion(PropertyCollection props, String fileUri, int lineN, int character, bool multiline)
+        {
             //Make sure lsp has finished loading
-            if(this.Rpc == null){
+            if (this.Rpc == null)
+            {
                 return null;
             }
-            if (!ContainsFile(fileUri)){
+            if (!ContainsFile(fileUri))
+            {
                 return null;
             }
             //catching server errors
-            try{
+            try
+            {
                 //args to send for refact/getCompletions
-                var argObj2 = new{
-                    text_document_position = new {
+                var argObj2 = new
+                {
+                    text_document_position = new
+                    {
                         textDocument = new { uri = fileUri },
                         position = new { line = lineN, character = character },
                     },
                     parameters = new { max_new_tokens = 50, temperature = 0.2f },
                     multiline = multiline,
                     textDocument = new { uri = fileUri },
-                    position = new{ line = lineN, character = character }
+                    position = new { line = lineN, character = character }
                 };
                 await this.Rpc.DispatchCompletion;
                 ShowLoadingStatusBar();
-                
+
                 var res = await this.Rpc.InvokeWithParameterObjectAsync<JToken>("refact/getCompletions", argObj2);
                 ShowDefaultStatusBar();
 
                 var choices = res["choices"];
 
-                if (!(choices != null && choices.Count() > 0)){
+                if (!(choices != null && choices.Count() > 0))
+                {
                     return null;
                 }
                 //process results
                 List<String> suggestions = new List<String>();
-                foreach (var s in res["choices"]){
+                foreach (var s in res["choices"])
+                {
                     var code_completion = s["code_completion"];
-                    if (code_completion != null){
+                    if (code_completion != null)
+                    {
                         suggestions.Add(code_completion.ToString());
                     }
                 }
 
-                if (suggestions.Count > 0){
+                if (suggestions.Count > 0)
+                {
                     return suggestions[0];
-                }else{
+                }
+                else
+                {
                     return null;
                 }
             }
-            catch (Exception e){
+            catch (Exception e)
+            {
                 Debug.Write("Error " + e.ToString());
                 ShowStatusBarError("Error: \n" + e.Message);
                 return null;
             }
         }
 
-        async void ShowDefaultStatusBar(){
+        async void ShowDefaultStatusBar()
+        {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (!statusBar.IsInitialized()){
+            if (!statusBar.IsInitialized())
+            {
                 statusBar.InitStatusBar();
             }
             statusBar.ShowDefaultStatusBar();
         }
 
-        async void ShowStatusBarError(String error){
+        async void ShowStatusBarError(String error)
+        {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (!statusBar.IsInitialized()){
+            if (!statusBar.IsInitialized())
+            {
                 statusBar.InitStatusBar();
             }
             statusBar.ShowStatusBarError(error);
         }
 
-        async void ShowLoadingStatusBar(){
+        async void ShowLoadingStatusBar()
+        {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (!statusBar.IsInitialized()){
+            if (!statusBar.IsInitialized())
+            {
                 statusBar.InitStatusBar();
             }
             statusBar.ShowLoadingSymbol();
         }
 
-        public void Dispose(){
-            if(serverProcess != null){
-                try{
+        public void Dispose()
+        {
+            General.OnSettingsChanged -= ReloadLanguageClient;
+
+            if (serverProcess != null)
+            {
+                try
+                {
                     serverProcess.Kill();
                     serverProcess.WaitForExit();
+                }
+                catch (Exception e)
+                {
+                    Debug.Write("Dispose " + e);
+                }
+                finally
+                {
                     serverProcess.Dispose();
-                }catch(Exception e){
-                    Debug.Write("Dispose" + e.ToString());
+                    serverProcess = null;
                 }
             }
         }
 
+
         //ilanguage client middle layer
-        internal class RefactMiddleLayer : ILanguageClientMiddleLayer{
+        internal class RefactMiddleLayer : ILanguageClientMiddleLayer
+        {
             internal readonly static RefactMiddleLayer Instance = new RefactMiddleLayer();
 
             //returns true if the method should be handled by the middle layer
-            public bool CanHandle(string methodName){
+            public bool CanHandle(string methodName)
+            {
                 return true;
             }
 
             //intercepts new files and adds them to the knonw file set
-            public Task HandleNotificationAsync(string methodName, JToken methodParam, Func<JToken, Task> sendNotification){
+            public Task HandleNotificationAsync(string methodName, JToken methodParam, Func<JToken, Task> sendNotification)
+            {
                 Task t = sendNotification(methodParam);
-                if (methodName == "textDocument/didOpen"){
+                if (methodName == "textDocument/didOpen")
+                {
                     RefactLanguageClient.Instance.files.Add(methodParam["textDocument"]["uri"].ToString());
                 }
                 return t;
@@ -355,11 +476,15 @@ namespace RefactAI{
 
             //intercepts requests for completions sent to the lsp
             //returns an empty list to avoid showing default completions
-            public async Task<JToken> HandleRequestAsync(string methodName, JToken methodParam, Func<JToken, Task<JToken>> sendRequest){
+            public async Task<JToken> HandleRequestAsync(string methodName, JToken methodParam, Func<JToken, Task<JToken>> sendRequest)
+            {
                 var result = await sendRequest(methodParam);
-                if(methodName == "textDocument/completion"){
+                if (methodName == "textDocument/completion")
+                {
                     return JToken.Parse("[]");
-                }else{
+                }
+                else
+                {
                     return result;
                 }
             }
