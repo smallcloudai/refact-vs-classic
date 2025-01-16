@@ -40,6 +40,7 @@ namespace RefactAI
             stack.Children.Clear();
             stack.Background = transparentBrush;
             stack.Children.Add(CreateText("|{ Refact"));
+            stack.ToolTip = null; // Clear the tooltip when idle
         }
 
         public void ShowStatusBarError(string error){
@@ -47,7 +48,7 @@ namespace RefactAI
             stack.Background = errorBrush;
             stack.Children.Add(CreateImage("debug-disconnect.png"));
             stack.Children.Add(CreateText("Refact.ai"));
-            stack.ToolTip = createToolTip(text: error, stack);
+            ShowErrorToolTip(error); // Display the error message in a tooltip
         }
 
         public void ShowLoadingSymbol(){
@@ -92,5 +93,13 @@ namespace RefactAI
             return myImage;
         }
 
+        // Method to show the error message in a tooltip
+        private void ShowErrorToolTip(string errorMessage)
+        {
+            ToolTip errorToolTip = new ToolTip();
+            errorToolTip.Content = errorMessage;
+            errorToolTip.IsOpen = true;
+            stack.ToolTip = errorToolTip;
+        }
     }
 }
