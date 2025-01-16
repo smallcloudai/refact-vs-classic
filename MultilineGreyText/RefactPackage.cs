@@ -59,6 +59,9 @@ namespace RefactAI{
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress){
             await this.RegisterCommandsAsync();
             await RefactAI.PauseRefactCommand.InitializeAsync(this);
+
+            // Register the settings change notification method
+            General.Instance.Saved += async (sender, e) => await RefactLanguageClient.Instance.RestartRefactLspProcess();
         }
 
         #endregion

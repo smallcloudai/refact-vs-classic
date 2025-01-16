@@ -364,5 +364,11 @@ namespace RefactAI{
                 }
             }
         }
+
+        // Method to restart the refact-lsp process
+        public async Task RestartRefactLspProcess(){
+            await StopServerAsync();
+            await ActivateAsync(CancellationToken.None);
+        }
     }
 }
