@@ -446,6 +446,7 @@ namespace RefactAI{
                 int diff = untrimLine.Length - untrimLine.TrimStart().Length;
                 string whitespace = String.IsNullOrWhiteSpace(untrimLine) ? "" : untrimLine.Substring(0, diff);
                 ReplaceText(whitespace + suggestion.Item1, currentTextLineN);
+                RequestNextPortion(); // Pa8f8
                 return true;
             }
 
@@ -509,6 +510,16 @@ namespace RefactAI{
             //currently all of them for simplicity 
             if (this.TagsChanged != null){
                 this.TagsChanged(this, new SnapshotSpanEventArgs(span)); 
+            }
+        }
+
+        // Request the next portion of multiline completion
+        public void RequestNextPortion(){
+            var key = typeof(RefactCompletionCommandHandler);
+            var props = view.TextBuffer.Properties;
+            if (props.ContainsProperty(key)){
+                var handler = props.GetProperty<RefactCompletionCommandHandler>(key);
+                handler.GetLSPCompletions();
             }
         }
     }

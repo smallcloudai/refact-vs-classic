@@ -219,6 +219,7 @@ namespace RefactAI{
                 if (tagger != null){
                     if (tagger.IsSuggestionActive() && tagger.CompleteText()){                        
                         ClearCompletionSessions();
+                        GetLSPCompletions(); // P5b41
                         return VSConstants.S_OK;
                     }else{
                         tagger.ClearSuggestion();
