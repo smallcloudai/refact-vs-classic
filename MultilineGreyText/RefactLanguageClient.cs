@@ -181,7 +181,20 @@ namespace RefactAI{
             args += "--api-key " + (String.IsNullOrWhiteSpace(General.Instance.APIKey) ? "vs-classic-no-key" : General.Instance.APIKey) + " ";
             args += "--lsp-stdin-stdout 1";
 
+            // Add the --enduser-client-version flag
+            string pluginVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            string ideVersion = GetIDEVersion();
+            args += $" --enduser-client-version {pluginVersion}/{ideVersion}";
+
             return args;
+        }
+
+        // Helper method to get the IDE version
+        private string GetIDEVersion()
+        {
+            IVsShell shell = (IVsShell)Package.GetGlobalService(typeof(SVsShell));
+            shell.GetProperty((int)__VSSPROPID5.VSSPROPID_ReleaseVersion, out object version);
+            return version.ToString();
         }
 
         //used to start loading lsp
