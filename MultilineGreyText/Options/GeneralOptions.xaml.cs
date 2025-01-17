@@ -17,6 +17,7 @@ namespace RefactAI{
         public void Initialize(){
             pPauseCompletion.IsChecked = General.Instance.PauseCompletion;
             pTelemetryCodeSnippets.IsChecked = General.Instance.TelemetryCodeSnippets;
+            pInsecureSSL.IsChecked = General.Instance.InsecureSSL;
 
             AddressURL.Text = General.Instance.AddressURL;
             APIKey.Text = General.Instance.APIKey;
@@ -48,6 +49,18 @@ namespace RefactAI{
         //code snippets unchecked
         private void pTelemetryCodeSnippets_Unchecked(object sender, System.Windows.RoutedEventArgs e){
             General.Instance.TelemetryCodeSnippets = (bool)pTelemetryCodeSnippets.IsChecked;
+            General.Instance.Save();
+        }
+
+        //insecure SSL checked
+        private void pInsecureSSL_Checked(object sender, System.Windows.RoutedEventArgs e){
+            General.Instance.InsecureSSL = (bool)pInsecureSSL.IsChecked;
+            General.Instance.Save();
+        }
+
+        //insecure SSL unchecked
+        private void pInsecureSSL_Unchecked(object sender, System.Windows.RoutedEventArgs e){
+            General.Instance.InsecureSSL = (bool)pInsecureSSL.IsChecked;
             General.Instance.Save();
         }
 

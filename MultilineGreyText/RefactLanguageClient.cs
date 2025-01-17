@@ -179,6 +179,9 @@ namespace RefactAI{
 
             args += "--address-url " + (String.IsNullOrWhiteSpace(General.Instance.AddressURL) ? "Refact" : General.Instance.AddressURL) + " ";
             args += "--api-key " + (String.IsNullOrWhiteSpace(General.Instance.APIKey) ? "vs-classic-no-key" : General.Instance.APIKey) + " ";
+            if (General.Instance.InsecureSSL){
+                args += "--insecure-ssl ";
+            }
             args += "--lsp-stdin-stdout 1";
 
             return args;

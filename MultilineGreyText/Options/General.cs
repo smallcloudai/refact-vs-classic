@@ -63,6 +63,12 @@ namespace RefactAI{
         [DefaultValue(false)]
         public bool TelemetryCodeSnippets{ get; set; } = false;
 
+        [Category("Refact Assistant")]
+        [DisplayName("Insecure SSL")]
+        [Description("Allow insecure SSL connections.")]
+        [DefaultValue(false)]
+        public bool InsecureSSL { get; set; } = false;
+
         //enters a message into the log when the options are saved
         public General() : base(){
             Saved += delegate { VS.StatusBar.ShowMessageAsync("Options Saved").FireAndForget(); };
